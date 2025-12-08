@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Advanced GIS mapping application with interactive features, location data visualization, and real-time search capabilities">
+    <meta name="keywords" content="GIS, maps, geospatial, location data, leaflet, mapping">
+    <meta name="author" content="GIS Pro">
+
+    <title>GIS Pro - Advanced Mapping Platform</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/advanced-features.css') }}">
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <!-- Logo Section -->
+                <div class="logo-section">
+                    <div class="logo-icon">
+                        <i class="fas fa-globe-americas"></i>
+                    </div>
+                    <div class="logo-text">
+                        <h1>GIS Pro</h1>
+                        <p>Advanced Mapping Platform</p>
+                    </div>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="search-container">
+                    <div class="search-wrapper">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="searchInput"
+                            placeholder="Search for cities, places, landmarks worldwide..." autocomplete="off">
+                        <div id="searchResults" class="search-results"></div>
+                    </div>
+                </div>
+
+                <!-- Header Actions -->
+                <div class="header-actions">
+                    <div class="stat-badge">
+                        <i class="fas fa-map-marker-alt icon"></i>
+                        <div>
+                            <div class="value" id="totalLocations">0</div>
+                            <div class="label">Locations</div>
+                        </div>
+                    </div>
+
+                    <button class="control-btn tooltip" data-tooltip="Toggle Sidebar" id="sidebarToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <!-- Filter Section -->
+                <div class="sidebar-section">
+                    <h3 class="section-title">Filter by Type</h3>
+                    <div class="filter-group">
+                        <button class="filter-btn active" data-filter="all">
+                            <span>
+                                <i class="fas fa-globe icon"></i>
+                                All Locations
+                            </span>
+                            <span class="count" id="countAll">0</span>
+                        </button>
+                        <button class="filter-btn" data-filter="park">
+                            <span>
+                                <i class="fas fa-tree icon"></i>
+                                Parks
+                            </span>
+                            <span class="count" id="countPark">0</span>
+                        </button>
+                        <button class="filter-btn" data-filter="landmark">
+                            <span>
+                                <i class="fas fa-landmark icon"></i>
+                                Landmarks
+                            </span>
+                            <span class="count" id="countLandmark">0</span>
+                        </button>
+                        <button class="filter-btn" data-filter="infrastructure">
+                            <span>
+                                <i class="fas fa-road icon"></i>
+                                Infrastructure
+                            </span>
+                            <span class="count" id="countInfrastructure">0</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Locations List -->
+                <div class="sidebar-section">
+                    <h3 class="section-title">Locations</h3>
+                    <div class="location-list" id="locationList">
+                        <!-- Locations will be populated here -->
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Map Container -->
+            <div class="map-container">
+                <div id="map"></div>
+
+                <!-- Map Controls -->
+                <div class="map-controls">
+                    <button class="control-btn tooltip" data-tooltip="My Location" id="locateBtn">
+                        <i class="fas fa-crosshairs"></i>
+                    </button>
+                    <button class="control-btn tooltip" data-tooltip="Draw Tools" id="drawToolsBtn">
+                        <i class="fas fa-pencil-ruler"></i>
+                    </button>
+                    <button class="control-btn tooltip" data-tooltip="Radius Analysis" id="radiusBtn">
+                        <i class="fas fa-circle-notch"></i>
+                    </button>
+                    <button class="control-btn tooltip" data-tooltip="Export Map" id="exportBtn">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="control-btn tooltip" data-tooltip="Map Layers" id="layerToggle">
+                        <i class="fas fa-layer-group"></i>
+                    </button>
+                    <button class="control-btn tooltip" data-tooltip="Fullscreen" id="fullscreenBtn">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                </div>
+
+                <!-- Info Panel -->
+                <div class="info-panel" id="infoPanel">
+                    <div class="info-panel-header">
+                        <div>
+                            <h2 class="info-panel-title" id="infoPanelTitle">Location Name</h2>
+                            <span class="location-type" id="infoPanelType">type</span>
+                        </div>
+                        <button class="close-btn" id="closePanelBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="info-panel-content" id="infoPanelContent">
+                        <p id="infoPanelDescription">Description goes here...</p>
+
+                        <div class="properties-grid" id="propertiesGrid">
+                            <!-- Properties will be populated here -->
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-primary" id="directionsBtn">
+                            <i class="fas fa-directions"></i>
+                            Get Directions
+                        </button>
+                        <button class="btn btn-secondary" id="shareBtn">
+                            <i class="fas fa-share-alt"></i>
+                            Share
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Radius Modal (Phase 1) -->
+        <div class="radius-modal" id="radiusModal">
+            <div class="radius-modal-content">
+                <div class="radius-modal-header">
+                    <h3>
+                        <i class="fas fa-circle-notch"></i>
+                        Radius Analysis
+                    </h3>
+                    <button class="close-btn" id="radiusModalClose">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="radius-modal-body">
+                    <p>Enter radius distance for analysis</p>
+                    <div class="radius-input-group">
+                        <input type="number" id="radiusInput" placeholder="1.0" min="0.1" step="0.1" value="1.0">
+                        <select id="radiusUnit">
+                            <option value="km">Kilometers</option>
+                            <option value="mi">Miles</option>
+                            <option value="m">Meters</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="radius-modal-footer">
+                    <button class="btn btn-secondary" id="radiusCancelBtn">Cancel</button>
+                    <button class="btn btn-primary" id="radiusConfirmBtn">
+                        <i class="fas fa-check"></i>
+                        Create Radius
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Leaflet MarkerCluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+    <!-- Leaflet Draw JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <!-- Advanced Features Module -->
+    <script src="{{ url_for('static', filename='js/advanced-features.js') }}"></script>
+
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+
+</html>

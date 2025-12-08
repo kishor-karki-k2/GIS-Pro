@@ -1,0 +1,153 @@
+{
+    "locations": [
+        {
+            "id": 1,
+            "name": "Central Park",
+            "type": "park",
+            "lat": 40.785091,
+            "lng": -73.968285,
+            "description": "Urban park in Manhattan, one of the most visited parks in the United States",
+            "properties": {
+                "area": "843 acres",
+                "established": "1857",
+                "visitors": "42 million/year",
+                "features": "Lakes, gardens, playgrounds"
+            }
+        },
+        {
+            "id": 2,
+            "name": "Times Square",
+            "type": "landmark",
+            "lat": 40.758896,
+            "lng": -73.985130,
+            "description": "Major commercial intersection and tourist destination in Midtown Manhattan",
+            "properties": {
+                "area": "0.1 square miles",
+                "pedestrians": "300,000/day",
+                "nickname": "The Crossroads of the World"
+            }
+        },
+        {
+            "id": 3,
+            "name": "Brooklyn Bridge",
+            "type": "infrastructure",
+            "lat": 40.706086,
+            "lng": -73.996864,
+            "description": "Historic suspension bridge connecting Manhattan and Brooklyn",
+            "properties": {
+                "length": "5,989 ft",
+                "opened": "1883",
+                "architect": "John A. Roebling",
+                "daily_crossings": "120,000"
+            }
+        },
+        {
+            "id": 4,
+            "name": "Statue of Liberty",
+            "type": "landmark",
+            "lat": 40.689247,
+            "lng": -74.044502,
+            "description": "Iconic American monument and UNESCO World Heritage Site",
+            "properties": {
+                "height": "305 ft",
+                "dedicated": "1886",
+                "sculptor": "Frédéric Auguste Bartholdi",
+                "visitors": "4 million/year"
+            }
+        },
+        {
+            "id": 5,
+            "name": "Empire State Building",
+            "type": "landmark",
+            "lat": 40.748817,
+            "lng": -73.985428,
+            "description": "102-story Art Deco skyscraper in Midtown Manhattan",
+            "properties": {
+                "height": "1,454 ft",
+                "floors": "102",
+                "completed": "1931",
+                "architect": "Shreve, Lamb & Harmon"
+            }
+        },
+        {
+            "id": 6,
+            "name": "High Line",
+            "type": "park",
+            "lat": 40.747993,
+            "lng": -74.004765,
+            "description": "Elevated linear park built on historic freight rail line",
+            "properties": {
+                "length": "1.45 miles",
+                "opened": "2009",
+                "elevation": "30 feet above street",
+                "visitors": "8 million/year"
+            }
+        },
+        {
+            "id": 7,
+            "name": "Grand Central Terminal",
+            "type": "infrastructure",
+            "lat": 40.752726,
+            "lng": -73.977229,
+            "description": "Historic commuter rail terminal with stunning Beaux-Arts architecture",
+            "properties": {
+                "opened": "1913",
+                "platforms": "44",
+                "tracks": "67",
+                "daily_commuters": "750,000"
+            }
+        },
+        {
+            "id": 8,
+            "name": "9/11 Memorial & Museum",
+            "type": "landmark",
+            "lat": 40.711600,
+            "lng": -74.012800,
+            "description": "Memorial and museum commemorating the September 11, 2001 attacks",
+            "properties": {
+                "opened": "2011",
+                "pools_size": "Nearly 1 acre each",
+                "names_inscribed": "2,983",
+                "visitors": "5 million/year"
+            }
+        },
+        {
+            "id": 9,
+            "name": "Prospect Park",
+            "type": "park",
+            "lat": 40.660204,
+            "lng": -73.969086,
+            "description": "Public park in Brooklyn designed by Olmsted and Vaux",
+            "properties": {
+                "area": "526 acres",
+                "opened": "1867",
+                "features": "Lake, meadows, forest",
+                "designers": "Olmsted & Vaux"
+            }
+        },
+        {
+            "id": 10,
+            "name": "One World Trade Center",
+            "type": "infrastructure",
+            "lat": 40.713003,
+            "lng": -74.013169,
+            "description": "Main building of the rebuilt World Trade Center complex",
+            "properties": {
+                "height": "1,776 ft",
+                "floors": "94",
+                "completed": "2014",
+                "architect": "David Childs"
+            }
+        }
+    ],
+    "metadata": {
+        "version": "1.0",
+        "last_updated": "2025-12-05",
+        "total_locations": 10,
+        "data_sources": [
+            "OpenStreetMap",
+            "NYC Open Data",
+            "Public Records"
+        ]
+    }
+}

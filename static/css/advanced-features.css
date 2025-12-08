@@ -1,0 +1,439 @@
+/* ============================================
+   Phase 1 Advanced Features Styling
+   ============================================ */
+
+/* Draw Tools Popups */
+.measurement-popup,
+.radius-popup {
+    font-family: var(--font-primary);
+    padding: 0.75rem;
+    min-width: 150px;
+}
+
+.measurement-popup strong,
+.radius-popup strong {
+    color: var(--primary-500);
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.measurement-popup {
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.radius-popup {
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+/* Custom Draw Marker */
+.custom-draw-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Leaflet Draw Controls Theming */
+.leaflet-draw-toolbar {
+    background: var(--glass-bg-medium) !important;
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border) !important;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.leaflet-draw-toolbar a {
+    background-color: var(--glass-bg-light) !important;
+    border-color: var(--glass-border) !important;
+    color: var(--text-primary) !important;
+    transition: all var(--transition-fast);
+    position: relative;
+}
+
+/* Make draw tool icons more visible */
+.leaflet-draw-toolbar a .sr-only {
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+}
+
+.leaflet-draw-toolbar a {
+    /* Invert and brighten the icons for better visibility */
+    filter: brightness(0) invert(1);
+}
+
+.leaflet-draw-toolbar a:hover {
+    background-color: var(--primary-500) !important;
+    border-color: var(--primary-600) !important;
+    transform: scale(1.05);
+    filter: brightness(1) invert(0);
+}
+
+.leaflet-draw-toolbar a.leaflet-disabled {
+    background-color: var(--dark-bg-secondary) !important;
+    opacity: 0.5;
+    filter: brightness(0.7) invert(1);
+}
+
+/* Draw Actions */
+.leaflet-draw-actions {
+    background: var(--glass-bg-medium) !important;
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border) !important;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+}
+
+.leaflet-draw-actions a {
+    background-color: var(--glass-bg-light) !important;
+    border-color: var(--glass-border) !important;
+    color: var(--text-primary) !important;
+    transition: all var(--transition-fast);
+}
+
+.leaflet-draw-actions a:hover {
+    background-color: var(--primary-500) !important;
+    color: white !important;
+}
+
+/* Drawing Tooltips */
+.leaflet-draw-tooltip {
+    background: var(--glass-bg-medium) !important;
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border) !important;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xl);
+    color: var(--text-primary) !important;
+    padding: 0.5rem 0.75rem !important;
+    font-family: var(--font-primary);
+}
+
+.leaflet-draw-tooltip-single {
+    font-weight: 500;
+}
+
+.leaflet-draw-tooltip-subtext {
+    color: var(--text-secondary) !important;
+    font-size: 0.875rem;
+}
+
+/* Edit Toolbar */
+.leaflet-draw-edit-edit,
+.leaflet-draw-edit-remove {
+    background: var(--glass-bg-medium) !important;
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border) !important;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+/* Edit toolbar icon visibility - MAXIMUM SPECIFICITY OVERRIDE */
+.leaflet-draw-toolbar.leaflet-bar a.leaflet-draw-edit-edit,
+.leaflet-draw-toolbar.leaflet-bar a.leaflet-draw-edit-remove,
+.leaflet-draw-toolbar .leaflet-draw-edit-edit,
+.leaflet-draw-toolbar .leaflet-draw-edit-remove,
+.leaflet-draw-edit-edit a,
+.leaflet-draw-edit-remove a {
+    background-image: none !important;
+    background-color: var(--glass-bg-light) !important;
+    border: 1px solid var(--glass-border) !important;
+    transition: all var(--transition-fast) !important;
+    position: relative !important;
+    opacity: 1 !important;
+    background-position: 0 0 !important;
+    background-size: 0 0 !important;
+}
+
+/* FORCE remove all background sprites */
+.leaflet-draw-toolbar a.leaflet-draw-edit-edit,
+.leaflet-draw-toolbar a.leaflet-draw-edit-remove {
+    background-image: none !important;
+    background-position: 0 0 !important;
+}
+
+/* Add highly visible edit icon */
+.leaflet-draw-toolbar a.leaflet-draw-edit-edit::before,
+.leaflet-draw-edit-edit::before {
+    content: "✏️" !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    z-index: 999999 !important;
+    filter: none !important;
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    background: transparent !important;
+}
+
+/* Add highly visible delete icon */
+.leaflet-draw-toolbar a.leaflet-draw-edit-remove::before,
+.leaflet-draw-edit-remove::before {
+    content: "🗑️" !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    z-index: 999999 !important;
+    filter: none !important;
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    background: transparent !important;
+}
+
+/* Remove the text labels - keeping it clean like other buttons */
+.leaflet-draw-toolbar a.leaflet-draw-edit-edit::after,
+.leaflet-draw-toolbar a.leaflet-draw-edit-remove::after {
+    display: none !important;
+}
+
+
+/* Popup Customization for Measurements */
+.leaflet-popup-content-wrapper {
+    background: var(--glass-bg-medium) !important;
+    backdrop-filter: blur(20px) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-xl) !important;
+}
+
+.leaflet-popup-tip {
+    background: var(--glass-bg-medium) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-top: none !important;
+    border-right: none !important;
+}
+
+.leaflet-popup-close-button {
+    color: var(--text-secondary) !important;
+    font-size: 1.25rem !important;
+    padding: 0.25rem 0.5rem !important;
+}
+
+.leaflet-popup-close-button:hover {
+    color: var(--danger-500) !important;
+}
+
+/* Phase 1 Feature Buttons Active State */
+#drawToolsBtn.active {
+    background: var(--primary-500) !important;
+    color: white !important;
+    border-color: var(--primary-600) !important;
+    box-shadow: 0 0 20px rgba(66, 133, 244, 0.5) !important;
+}
+
+/* Radius Circle Styling */
+.leaflet-interactive {
+    transition: all var(--transition-base);
+}
+
+/* Draw Handlers */
+.leaflet-marker-icon.leaflet-div-icon {
+    background: transparent;
+    border: none;
+}
+
+.leaflet-marker-icon.leaflet-editing-icon {
+    background: var(--primary-500) !important;
+    border: 2px solid white !important;
+    border-radius: 50%;
+    width: 10px !important;
+    height: 10px !important;
+    margin-left: -5px !important;
+    margin-top: -5px !important;
+}
+
+.leaflet-editing-icon:hover {
+    background: var(--primary-600) !important;
+    transform: scale(1.3);
+    cursor: grab;
+}
+
+/* Measurement Labels */
+.leaflet-draw-guide {
+    fill: var(--primary-500) !important;
+    fill-opacity: 0.3 !important;
+    stroke: var(--primary-500) !important;
+    stroke-opacity: 0.6 !important;
+}
+
+/* Animation for new features */
+@keyframes featureIntro {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.leaflet-draw-toolbar,
+.leaflet-draw-actions {
+    animation: featureIntro 0.3s ease-out;
+}
+
+/* ============================================
+   Radius Modal Styling
+   ============================================ */
+
+.radius-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.radius-modal.active {
+    display: flex;
+}
+
+.radius-modal-content {
+    background: var(--glass-bg-heavy);
+    backdrop-filter: blur(30px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-2xl);
+    width: 90%;
+    max-width: 450px;
+    animation: slideUp 0.3s ease-out;
+    overflow: hidden;
+}
+
+.radius-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--glass-border);
+    background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+}
+
+.radius-modal-header h3 {
+    margin: 0;
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.radius-modal-header h3 i {
+    font-size: 1.5rem;
+}
+
+.radius-modal-body {
+    padding: 2rem 1.5rem;
+}
+
+.radius-modal-body p {
+    margin: 0 0 1.25rem 0;
+    color: var(--text-secondary);
+    font-size: 0.938rem;
+}
+
+.radius-input-group {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.radius-input-group input[type="number"] {
+    flex: 1;
+    padding: 0.875rem 1rem;
+    background: var(--dark-bg-secondary);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-family: var(--font-primary);
+    transition: all var(--transition-base);
+}
+
+.radius-input-group input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
+    background: var(--dark-bg-tertiary);
+}
+
+.radius-input-group select {
+    padding: 0.875rem 1rem;
+    background: var(--dark-bg-secondary);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-family: var(--font-primary);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    min-width: 140px;
+}
+
+.radius-input-group select:focus {
+    outline: none;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
+}
+
+.radius-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-top: 1px solid var(--glass-border);
+    background: var(--dark-bg-secondary);
+}
+
+.radius-modal-footer .btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.938rem;
+    font-weight: 500;
+}
+
+.radiusmodal-footer .btn-primary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Modal Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
