@@ -61,3 +61,14 @@ htmlcov/
 # Production
 *.pid
 *.sock
+
+# Development Notes (keep locally only)
+*_GUIDE.md
+*_IMPROVEMENTS.md
+*_ROADMAP.md
+*_SUMMARY.md
+*_TESTING.md
+*_RESULTS.md
+PHASE*.md
+NOTES.md
+TODO.md
