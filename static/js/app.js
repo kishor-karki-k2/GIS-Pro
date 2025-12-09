@@ -1329,9 +1329,12 @@ class GISApp {
             const query = document.getElementById('zoomPromptSearch').value.trim();
             if (query) {
                 this.hideZoomPrompt();
-                // Use the global search input and trigger search
-                document.getElementById('searchInput').value = query;
-                this.searchLocation(query);
+                // Add space after query to trigger search suggestions
+                const searchInput = document.getElementById('searchInput');
+                searchInput.value = query + ' ';
+                searchInput.focus();
+                // Trigger input event to show suggestions
+                searchInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
         });
 
