@@ -49,7 +49,6 @@ class GISApp {
     async init() {
         this.initMap();
         // Don't load locations initially - wait for user to search
-        // await this.loadLocationsByBounds();
         this.initEventListeners();
         this.setupMapMoveListener();
         this.initAdvancedFeatures(); // Phase 1 features
