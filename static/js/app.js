@@ -53,8 +53,22 @@ class GISApp {
         this.setupMapMoveListener();
         this.initAdvancedFeatures(); // Phase 1 features
 
-        // Make sidebar visible by default
-        document.getElementById('sidebar').classList.add('active');
+        // Initialize sidebar based on screen size
+        const sidebar = document.getElementById('sidebar');
+        if (window.innerWidth <= 768) {
+            // Mobile: Start in peek state (not expanded)
+            sidebar.classList.remove('active');
+        } else {
+            // Desktop: Start expanded
+            sidebar.classList.add('active');
+        }
+
+        // Handle orientation/resize changes
+        window.addEventListener('resize', () => {
+            if (this.map) {
+                this.map.invalidateSize();
+            }
+        });
     }
 
     initMap() {
@@ -808,15 +822,26 @@ class GISApp {
     toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const backdrop = document.getElementById('mobileBackdrop');
+        const isMobile = window.innerWidth <= 768;
 
-        sidebar.classList.toggle('active');
-
-        // Toggle backdrop on mobile
-        if (window.innerWidth <= 768) {
-            backdrop.classList.toggle('active');
+        if (isMobile) {
+            // Mobile: Bottom sheet behavior
+            // Toggle between expanded and peek states
+            if (sidebar.classList.contains('active')) {
+                // Collapse to peek state
+                sidebar.classList.remove('active');
+                backdrop.classList.remove('active');
+            } else {
+                // Expand fully
+                sidebar.classList.add('active');
+                backdrop.classList.add('active');
+            }
+        } else {
+            // Desktop: Traditional sidebar toggle
+            sidebar.classList.toggle('active');
         }
 
-        // Wait for CSS transition (300ms), then resize map to fill space
+        // Wait for CSS transition, then resize map
         setTimeout(() => {
             if (this.map) {
                 this.map.invalidateSize();
@@ -985,6 +1010,58 @@ class GISApp {
             // Close info panel when clicking on map
             // this.closeInfoPanel();
         });
+
+        // Mobile touch gestures for bottom sheet
+        this.initMobileGestures();
+    }
+
+    initMobileGestures() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('mobileBackdrop');
+        let startY = 0;
+        let currentY = 0;
+        let isDragging = false;
+
+        // Only enable on mobile
+        if (window.innerWidth > 768) return;
+
+        sidebar.addEventListener('touchstart', (e) => {
+            // Only track if touching the top area (drag handle zone)
+            const touch = e.touches[0];
+            const rect = sidebar.getBoundingClientRect();
+
+            // Allow dragging from top 60px of the sidebar
+            if (touch.clientY - rect.top < 60) {
+                startY = touch.clientY;
+                isDragging = true;
+            }
+        }, { passive: true });
+
+        sidebar.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            currentY = e.touches[0].clientY;
+        }, { passive: true });
+
+        sidebar.addEventListener('touchend', () => {
+            if (!isDragging) return;
+            isDragging = false;
+
+            const deltaY = currentY - startY;
+
+            // Swipe down: collapse
+            if (deltaY > 50) {
+                sidebar.classList.remove('active');
+                backdrop.classList.remove('active');
+            }
+            // Swipe up: expand
+            else if (deltaY < -50) {
+                sidebar.classList.add('active');
+                backdrop.classList.add('active');
+            }
+
+            startY = 0;
+            currentY = 0;
+        }, { passive: true });
     }
 
     // ========================================

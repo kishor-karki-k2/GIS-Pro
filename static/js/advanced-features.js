@@ -491,39 +491,213 @@ const AdvancedFeatures = {
     // Export Map
     async exportMap(map, format = 'png') {
         try {
-            // Use leaflet-image or html2canvas for export
             const mapContainer = map.getContainer();
 
-            // Simple approach using canvas
+            // Show loading indicator
+            const loadingEl = document.createElement('div');
+            loadingEl.id = 'export-loading';
+            loadingEl.innerHTML = `
+                <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                    background: rgba(30, 32, 41, 0.95); padding: 1.5rem 2rem; border-radius: 12px; 
+                    z-index: 10000; color: white; text-align: center; backdrop-filter: blur(10px);">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                    <p>Preparing export...</p>
+                </div>
+            `;
+            document.body.appendChild(loadingEl);
+
+            // Wait for tiles to load
+            await this.waitForTiles(map);
+
             return new Promise((resolve, reject) => {
                 // Load html2canvas dynamically
                 if (!window.html2canvas) {
                     const script = document.createElement('script');
                     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-                    script.onload = () => this.captureMap(mapContainer, format, resolve, reject);
+                    script.onload = () => this.captureMap(map, mapContainer, format, resolve, reject);
                     document.head.appendChild(script);
                 } else {
-                    this.captureMap(mapContainer, format, resolve, reject);
+                    this.captureMap(map, mapContainer, format, resolve, reject);
                 }
             });
         } catch (error) {
             console.error('Export error:', error);
+            document.getElementById('export-loading')?.remove();
             throw error;
         }
     },
 
-    captureMap(container, format, resolve, reject) {
+    // Wait for map tiles to finish loading
+    waitForTiles(map) {
+        return new Promise((resolve) => {
+            // Force a redraw
+            map.invalidateSize();
+
+            // Check if tiles are loading
+            let loadingTiles = 0;
+
+            map.eachLayer((layer) => {
+                if (layer._tiles) {
+                    Object.values(layer._tiles).forEach(tile => {
+                        if (!tile.loaded) loadingTiles++;
+                    });
+                }
+            });
+
+            if (loadingTiles === 0) {
+                // Give a bit more time for rendering
+                setTimeout(resolve, 500);
+            } else {
+                // Wait for tiles to load
+                const onLoad = () => {
+                    loadingTiles--;
+                    if (loadingTiles <= 0) {
+                        map.off('tileload', onLoad);
+                        setTimeout(resolve, 500);
+                    }
+                };
+                map.on('tileload', onLoad);
+
+                // Fallback timeout
+                setTimeout(resolve, 3000);
+            }
+        });
+    },
+
+    captureMap(map, container, format, resolve, reject) {
+        // Clone the container to modify styles without affecting original
         html2canvas(container, {
             useCORS: true,
             allowTaint: true,
-            backgroundColor: '#1a1d29'
+            backgroundColor: '#1a1d29',
+            scale: 2, // Higher quality
+            logging: false,
+            imageTimeout: 15000,
+            width: container.offsetWidth,
+            height: container.offsetHeight,
+            x: 0,
+            y: 0,
+            scrollX: 0,
+            scrollY: 0,
+            // Important: capture absolutely positioned elements
+            ignoreElements: (element) => {
+                // Exclude elements we don't want in export
+                return element.classList?.contains('mobile-backdrop') ||
+                    element.id === 'export-loading';
+            },
+            onclone: (clonedDoc, clonedElement) => {
+                // Ensure all overlays are visible and properly positioned
+                const clonedContainer = clonedElement;
+
+                // Make sure the container captures everything
+                clonedContainer.style.overflow = 'visible';
+                clonedContainer.style.position = 'relative';
+
+                // Fix map controls visibility
+                const mapControls = clonedContainer.querySelector('.map-controls');
+                if (mapControls) {
+                    mapControls.style.position = 'absolute';
+                    mapControls.style.right = '20px';
+                    mapControls.style.top = '20px';
+                    mapControls.style.zIndex = '1000';
+                }
+
+                // Fix layer switcher
+                const layerSwitcher = clonedContainer.querySelector('.layer-switcher');
+                if (layerSwitcher) {
+                    layerSwitcher.style.position = 'absolute';
+                    layerSwitcher.style.bottom = '30px';
+                    layerSwitcher.style.left = '50%';
+                    layerSwitcher.style.transform = 'translateX(-50%)';
+                    layerSwitcher.style.zIndex = '1000';
+                }
+
+                // Fix Leaflet Draw toolbar
+                const drawToolbar = clonedContainer.querySelector('.leaflet-draw');
+                if (drawToolbar) {
+                    drawToolbar.style.zIndex = '1000';
+                }
+
+                // Fix any info panels
+                const infoPanel = clonedContainer.querySelector('.info-panel');
+                if (infoPanel) {
+                    infoPanel.style.position = 'absolute';
+                    infoPanel.style.zIndex = '1000';
+                }
+
+                // Make sure leaflet panes are visible
+                const leafletPanes = clonedContainer.querySelectorAll('.leaflet-pane');
+                leafletPanes.forEach(pane => {
+                    pane.style.zIndex = pane.style.zIndex || '400';
+                });
+            }
         }).then(canvas => {
+            // Remove loading indicator
+            document.getElementById('export-loading')?.remove();
+
+            // Create download link
             const link = document.createElement('a');
             link.download = `gis-map-${Date.now()}.${format}`;
-            link.href = canvas.toDataURL(`image/${format}`);
+            link.href = canvas.toDataURL(`image/${format}`, 1.0);
             link.click();
+
+            // Show success notification
+            if (window.gisApp) {
+                window.gisApp.showNotification('Map exported successfully!', 'success');
+            }
+
             resolve();
-        }).catch(reject);
+        }).catch(err => {
+            document.getElementById('export-loading')?.remove();
+            console.error('Capture failed:', err);
+
+            // Fallback: Try using Leaflet's built-in method
+            this.fallbackExport(map, format, resolve, reject);
+        });
+    },
+
+    // Fallback export using Leaflet's canvas
+    fallbackExport(map, format, resolve, reject) {
+        try {
+            // Try to get canvas from Leaflet
+            const mapContainer = map.getContainer();
+            const canvasElements = mapContainer.querySelectorAll('canvas');
+
+            if (canvasElements.length > 0) {
+                // Merge all canvas elements
+                const mergedCanvas = document.createElement('canvas');
+                mergedCanvas.width = mapContainer.offsetWidth * 2;
+                mergedCanvas.height = mapContainer.offsetHeight * 2;
+                const ctx = mergedCanvas.getContext('2d');
+
+                // Fill background
+                ctx.fillStyle = '#1a1d29';
+                ctx.fillRect(0, 0, mergedCanvas.width, mergedCanvas.height);
+
+                // Draw each canvas
+                canvasElements.forEach(canvas => {
+                    try {
+                        ctx.drawImage(canvas, 0, 0, mergedCanvas.width, mergedCanvas.height);
+                    } catch (e) {
+                        console.warn('Could not draw canvas:', e);
+                    }
+                });
+
+                const link = document.createElement('a');
+                link.download = `gis-map-${Date.now()}.${format}`;
+                link.href = mergedCanvas.toDataURL(`image/${format}`, 1.0);
+                link.click();
+
+                resolve();
+            } else {
+                reject(new Error('No canvas elements found'));
+            }
+        } catch (err) {
+            if (window.gisApp) {
+                window.gisApp.showNotification('Export failed. Try using a screenshot instead.', 'error');
+            }
+            reject(err);
+        }
     },
 
     // Keyboard Shortcuts
