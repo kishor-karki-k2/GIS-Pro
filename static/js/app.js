@@ -844,16 +844,13 @@ class GISApp {
         const isMobile = window.innerWidth <= 768;
 
         if (isMobile) {
-            // Mobile: Bottom sheet behavior
-            // Toggle between expanded and peek states
+            // Mobile: Toggle sidebar slide-in
             if (sidebar.classList.contains('active')) {
-                // Collapse to peek state
                 sidebar.classList.remove('active');
-                backdrop.classList.remove('active');
+                if (backdrop) backdrop.classList.remove('active');
             } else {
-                // Expand fully
                 sidebar.classList.add('active');
-                backdrop.classList.add('active');
+                if (backdrop) backdrop.classList.add('active');
             }
         } else {
             // Desktop: Traditional sidebar toggle
@@ -914,6 +911,42 @@ class GISApp {
                 this.setFilter(btn.dataset.filter);
             });
         });
+
+        // Mobile backdrop - close sidebar when tapping outside
+        const mobileBackdrop = document.getElementById('mobileBackdrop');
+        if (mobileBackdrop) {
+            mobileBackdrop.addEventListener('click', () => {
+                this.toggleSidebar();
+                // Reset mobile nav button state
+                const mobileNavBtn = document.getElementById('mobileNavBtn');
+                if (mobileNavBtn) {
+                    mobileNavBtn.classList.remove('active');
+                    const icon = mobileNavBtn.querySelector('i');
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+            });
+        }
+
+        // Mobile navigation FAB button
+        const mobileNavBtn = document.getElementById('mobileNavBtn');
+        if (mobileNavBtn) {
+            mobileNavBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.toggleSidebar();
+                // Toggle button active state and icon
+                mobileNavBtn.classList.toggle('active');
+                const icon = mobileNavBtn.querySelector('i');
+                if (mobileNavBtn.classList.contains('active')) {
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
+                } else {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+            });
+        }
 
         // Map controls
         document.getElementById('locateBtn').addEventListener('click', () => {
