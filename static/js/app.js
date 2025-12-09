@@ -534,6 +534,14 @@ class GISApp {
 
         // Show details in info panel
         this.showLocationDetails(locationId);
+
+        // Auto-close sidebar on mobile to show map/info
+        if (window.innerWidth < 768) {
+            document.getElementById('sidebar').classList.remove('active');
+            setTimeout(() => {
+                if (this.map) this.map.invalidateSize();
+            }, 350);
+        }
     }
 
     highlightMarker(locationId) {
