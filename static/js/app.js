@@ -158,14 +158,13 @@ class GISApp {
             const north = bounds.getNorth();
             const east = bounds.getEast();
 
-            // Check if bounds have changed significantly (prevent redundant calls)
+            // Check if bounds have changed significantly
             if (this.lastBounds) {
                 const latDiff = Math.abs(south - this.lastBounds.south) + Math.abs(north - this.lastBounds.north);
                 const lngDiff = Math.abs(west - this.lastBounds.west) + Math.abs(east - this.lastBounds.east);
                 const currentLatSpan = Math.abs(north - south);
                 const currentLngSpan = Math.abs(east - west);
 
-                // Only fetch if map moved more than 20% of current viewport
                 if (latDiff < currentLatSpan * 0.2 && lngDiff < currentLngSpan * 0.2) {
                     this.loadingLocations = false;
                     this.showLoadingOverlay(false);
@@ -173,32 +172,155 @@ class GISApp {
                 }
             }
 
-            // Store bounds to avoid duplicate calls
             this.lastBounds = { south, west, north, east };
 
-            // Always fetch ALL types to ensure counts are accurate for all categories
-            // Client-side filtering (in renderLocations) will handle what is shown
-            const url = `/api/locations/bounds?south=${south}&west=${west}&north=${north}&east=${east}`;
+            const query = this.buildOverpassQuery(south, west, north, east, this.currentFilter === 'all' ? null : this.currentFilter);
 
-            const response = await fetch(url);
-            const newLocations = await response.json();
+            const response = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                body: 'data=' + encodeURIComponent(query),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            });
 
-            // Always update locations - don't block updates with JSON comparison
-            this.locations = newLocations;
+            if (!response.ok) throw new Error('Overpass API error');
+
+            const data = await response.json();
+            this.locations = this.processOverpassData(data).slice(0, 500);
 
             this.renderLocations();
             this.updateCounts();
             this.updateTotalCount();
 
-            // No notification on successful load - just update quietly in background
         } catch (error) {
             console.error('Error loading locations:', error);
-            // Only show notification on errors
-            this.showNotification('Unable to load locations. Using cached data.', 'error');
+            this.showNotification('Unable to load locations. ' + error.message, 'error');
         } finally {
             this.loadingLocations = false;
             this.showLoadingOverlay(false);
         }
+    }
+
+    buildOverpassQuery(south, west, north, east, type) {
+        const bbox = `(${south},${west},${north},${east})`;
+
+        const queries = {
+            park: `
+                way["leisure"="park"]${bbox};
+                relation["leisure"="park"]${bbox};
+                way["leisure"="garden"]${bbox};
+                way["leisure"="playground"]${bbox};
+                node["leisure"="playground"]${bbox};
+                way["leisure"="sports_centre"]${bbox};
+                node["leisure"="sports_centre"]${bbox};
+                way["landuse"="recreation_ground"]${bbox};
+            `,
+            landmark: `
+                node["tourism"="attraction"]${bbox};
+                node["historic"]${bbox};
+                way["tourism"="attraction"]${bbox};
+                way["historic"]${bbox};
+                node["amenity"="place_of_worship"]${bbox};
+                way["amenity"="place_of_worship"]${bbox};
+                node["tourism"="museum"]${bbox};
+                way["tourism"="museum"]${bbox};
+            `,
+            infrastructure: `
+                way["highway"="motorway"]${bbox};
+                way["highway"="trunk"]${bbox};
+                way["railway"="rail"]${bbox};
+                node["railway"="station"]${bbox};
+                way["man_made"="bridge"]${bbox};
+                node["man_made"="bridge"]${bbox};
+                way["aeroway"="aerodrome"]${bbox};
+                node["aeroway"="aerodrome"]${bbox};
+                node["amenity"="hospital"]${bbox};
+                way["amenity"="hospital"]${bbox};
+                node["amenity"="school"]${bbox};
+                way["amenity"="school"]${bbox};
+                node["amenity"="university"]${bbox};
+                way["amenity"="university"]${bbox};
+                node["office"="government"]${bbox};
+                way["office"="government"]${bbox};
+            `
+        };
+
+        let content = '';
+        if (type && queries[type]) {
+            content = queries[type];
+        } else {
+            content = `
+                way["leisure"="park"]${bbox};
+                way["leisure"="garden"]${bbox};
+                way["leisure"="playground"]${bbox};
+                node["tourism"="attraction"]${bbox};
+                node["historic"]${bbox};
+                way["tourism"="attraction"]${bbox};
+                node["amenity"="place_of_worship"]${bbox};
+                way["highway"="motorway"]${bbox};
+                way["man_made"="bridge"]${bbox};
+                node["railway"="station"]${bbox};
+                node["amenity"="hospital"]${bbox};
+                node["amenity"="school"]${bbox};
+             `;
+        }
+
+        return `[out:json][timeout:25];(${content});out center;`;
+    }
+
+    processOverpassData(data) {
+        return (data.elements || []).map((element, idx) => {
+            let lat, lon;
+            if (element.lat && element.lon) {
+                lat = element.lat;
+                lon = element.lon;
+            } else if (element.center) {
+                lat = element.center.lat;
+                lon = element.center.lon;
+            } else {
+                return null;
+            }
+
+            const tags = element.tags || {};
+            const name = tags.name || `Location ${idx + 1}`;
+
+            let loc_type = 'landmark';
+            let desc = 'Point of interest';
+
+            if (tags.leisure && ['park', 'garden', 'playground', 'sports_centre'].includes(tags.leisure)) {
+                loc_type = 'park';
+                desc = tags.leisure.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            } else if (tags.landuse === 'recreation_ground') {
+                loc_type = 'park';
+                desc = 'Recreation Ground';
+            } else if (tags.tourism || tags.historic) {
+                loc_type = 'landmark';
+                desc = (tags.tourism || tags.historic).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            } else if (tags.amenity === 'place_of_worship') {
+                loc_type = 'landmark';
+                desc = tags.religion || 'Place of Worship';
+            } else if (tags.highway || tags.railway || tags.man_made || tags.aeroway ||
+                ['hospital', 'school', 'university'].includes(tags.amenity) ||
+                tags.office === 'government') {
+                loc_type = 'infrastructure';
+                desc = (tags.highway || tags.railway || tags.man_made || tags.amenity || tags.office || 'Infrastructure').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            }
+
+            return {
+                id: element.id,
+                name: name,
+                type: loc_type,
+                lat: lat,
+                lng: lon,
+                description: desc,
+                properties: {
+                    city: tags['addr:city'],
+                    street: tags['addr:street'],
+                    website: tags.website
+                }
+            };
+        }).filter(loc => loc !== null);
     }
 
     setupMapMoveListener() {
@@ -509,10 +631,25 @@ class GISApp {
         }
 
         try {
-            // Use geocoding API to search for places worldwide
-            const response = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
+            // Use Nominatim directly
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`;
+            const response = await fetch(url, {
+                headers: { 'User-Agent': 'GIS-Pro-App-Demo/1.0' }
+            });
+
+            if (!response.ok) throw new Error('Geocoding failed');
+
             const results = await response.json();
-            this.displaySearchResults(results);
+
+            const formattedResults = results.map(r => ({
+                name: r.display_name,
+                lat: parseFloat(r.lat),
+                lng: parseFloat(r.lon),
+                type: r.type,
+                address: r.address
+            }));
+
+            this.displaySearchResults(formattedResults);
         } catch (error) {
             console.error('Error searching:', error);
         }
