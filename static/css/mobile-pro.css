@@ -411,10 +411,14 @@
         display: none;
     }
 
-    .leaflet-control-scale {
-        bottom: 20px !important;
+    .leaflet-control-scale,
+    .leaflet-bottom.leaflet-left .leaflet-control-scale,
+    .scale-control {
+        position: fixed !important;
+        bottom: 25px !important;
         left: auto !important;
-        right: 10px !important;
+        right: 15px !important;
+        z-index: 1000 !important;
     }
 
     #map .leaflet-popup-content-wrapper {
