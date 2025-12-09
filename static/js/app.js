@@ -537,7 +537,10 @@ class GISApp {
 
         // Auto-close sidebar on mobile to show map/info
         if (window.innerWidth < 768) {
-            document.getElementById('sidebar').classList.remove('active');
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('mobileBackdrop');
+            sidebar.classList.remove('active');
+            backdrop.classList.remove('active');
             setTimeout(() => {
                 if (this.map) this.map.invalidateSize();
             }, 350);
@@ -803,7 +806,15 @@ class GISApp {
     }
 
     toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('active');
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('mobileBackdrop');
+
+        sidebar.classList.toggle('active');
+
+        // Toggle backdrop on mobile
+        if (window.innerWidth <= 768) {
+            backdrop.classList.toggle('active');
+        }
 
         // Wait for CSS transition (300ms), then resize map to fill space
         setTimeout(() => {
@@ -886,6 +897,13 @@ class GISApp {
 
         document.getElementById('sidebarToggle').addEventListener('click', () => {
             this.toggleSidebar();
+        });
+
+        // Mobile backdrop - close sidebar when clicking outside
+        document.getElementById('mobileBackdrop').addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                this.toggleSidebar();
+            }
         });
 
         // Phase 1 Advanced Features
