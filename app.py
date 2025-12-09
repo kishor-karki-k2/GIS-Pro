@@ -25,6 +25,11 @@ def fetch_osm_locations(south, west, north, east, location_type=None):
                 way["leisure"="park"]({south},{west},{north},{east});
                 relation["leisure"="park"]({south},{west},{north},{east});
                 way["leisure"="garden"]({south},{west},{north},{east});
+                way["leisure"="playground"]({south},{west},{north},{east});
+                node["leisure"="playground"]({south},{west},{north},{east});
+                way["leisure"="sports_centre"]({south},{west},{north},{east});
+                node["leisure"="sports_centre"]({south},{west},{north},{east});
+                way["landuse"="recreation_ground"]({south},{west},{north},{east});
             );
             out center;
         """,
@@ -36,6 +41,9 @@ def fetch_osm_locations(south, west, north, east, location_type=None):
                 way["tourism"="attraction"]({south},{west},{north},{east});
                 way["historic"]({south},{west},{north},{east});
                 node["amenity"="place_of_worship"]({south},{west},{north},{east});
+                way["amenity"="place_of_worship"]({south},{west},{north},{east});
+                node["tourism"="museum"]({south},{west},{north},{east});
+                way["tourism"="museum"]({south},{west},{north},{east});
             );
             out center;
         """,
@@ -45,9 +53,19 @@ def fetch_osm_locations(south, west, north, east, location_type=None):
                 way["highway"="motorway"]({south},{west},{north},{east});
                 way["highway"="trunk"]({south},{west},{north},{east});
                 way["railway"="rail"]({south},{west},{north},{east});
+                node["railway"="station"]({south},{west},{north},{east});
                 way["man_made"="bridge"]({south},{west},{north},{east});
                 node["man_made"="bridge"]({south},{west},{north},{east});
                 way["aeroway"="aerodrome"]({south},{west},{north},{east});
+                node["aeroway"="aerodrome"]({south},{west},{north},{east});
+                node["amenity"="hospital"]({south},{west},{north},{east});
+                way["amenity"="hospital"]({south},{west},{north},{east});
+                node["amenity"="school"]({south},{west},{north},{east});
+                way["amenity"="school"]({south},{west},{north},{east});
+                node["amenity"="university"]({south},{west},{north},{east});
+                way["amenity"="university"]({south},{west},{north},{east});
+                node["office"="government"]({south},{west},{north},{east});
+                way["office"="government"]({south},{west},{north},{east});
             );
             out center;
         """
@@ -57,18 +75,22 @@ def fetch_osm_locations(south, west, north, east, location_type=None):
     if location_type and location_type in queries:
         query = queries[location_type]
     else:
-        # Combine all queries for 'all' type
+        # Combine all queries for 'all' type (enhanced)
         query = f"""
             [out:json][timeout:25];
             (
                 way["leisure"="park"]({south},{west},{north},{east});
                 way["leisure"="garden"]({south},{west},{north},{east});
+                way["leisure"="playground"]({south},{west},{north},{east});
                 node["tourism"="attraction"]({south},{west},{north},{east});
                 node["historic"]({south},{west},{north},{east});
                 way["tourism"="attraction"]({south},{west},{north},{east});
                 node["amenity"="place_of_worship"]({south},{west},{north},{east});
                 way["highway"="motorway"]({south},{west},{north},{east});
                 way["man_made"="bridge"]({south},{west},{north},{east});
+                node["railway"="station"]({south},{west},{north},{east});
+                node["amenity"="hospital"]({south},{west},{north},{east});
+                node["amenity"="school"]({south},{west},{north},{east});
             );
             out center;
         """
@@ -99,16 +121,40 @@ def fetch_osm_locations(south, west, north, east, location_type=None):
             tags = element.get('tags', {})
             name = tags.get('name', f"Location {idx + 1}")
             
-            # Determine type
-            if 'leisure' in tags:
+            # Determine type based on tags
+            tags = element.get('tags', {})
+            
+            if 'leisure' in tags and tags['leisure'] in ['park', 'garden', 'playground', 'sports_centre']:
                 loc_type = 'park'
-                desc = f"{tags.get('leisure', 'Park').title()}"
+                desc = f"{tags.get('leisure', 'Park').title().replace('_', ' ')}"
+            elif 'landuse' in tags and tags['landuse'] == 'recreation_ground':
+                loc_type = 'park'
+                desc = "Recreation Ground"
             elif 'tourism' in tags or 'historic' in tags:
                 loc_type = 'landmark'
-                desc = f"{tags.get('tourism', tags.get('historic', 'Historic site')).title()}"
-            elif 'highway' in tags or 'railway' in tags or 'man_made' in tags:
+                if 'tourism' in tags:
+                    desc = f"{tags.get('tourism', 'Attraction').title().replace('_', ' ')}"
+                else:
+                    desc = f"{tags.get('historic', 'Historic site').title().replace('_', ' ')}"
+            elif 'amenity' in tags and tags['amenity'] == 'place_of_worship':
+                loc_type = 'landmark'
+                desc = f"{tags.get('religion', 'Place of worship').title()}"
+            elif 'highway' in tags or 'railway' in tags or 'man_made' in tags or 'aeroway' in tags:
                 loc_type = 'infrastructure'
-                desc = f"{tags.get('highway', tags.get('man_made', tags.get('railway', 'Infrastructure'))).title()}"
+                if 'highway' in tags:
+                    desc = f"{tags.get('highway', 'Road').title().replace('_', ' ')}"
+                elif 'railway' in tags:
+                    desc = f"{tags.get('railway', 'Railway').title()} Station" if tags['railway'] == 'station' else "Railway"
+                elif 'aeroway' in tags:
+                    desc = "Airport" if tags['aeroway'] == 'aerodrome' else "Aeroway"
+                else:
+                    desc = f"{tags.get('man_made', 'Infrastructure').title().replace('_', ' ')}"
+            elif 'amenity' in tags and tags['amenity'] in ['hospital', 'school', 'university']:
+                loc_type = 'infrastructure'
+                desc = f"{tags.get('amenity', 'Building').title()}"
+            elif 'office' in tags and tags['office'] == 'government':
+                loc_type = 'infrastructure'
+                desc = "Government Office"
             else:
                 loc_type = 'landmark'
                 desc = "Point of interest"
@@ -167,6 +213,9 @@ def get_locations_by_bounds():
                 locations = [loc for loc in sample_locations if loc['type'] == location_type]
             else:
                 locations = sample_locations
+        
+        # Limit to 500 results
+        locations = locations[:500]
         
         return jsonify(locations)
         

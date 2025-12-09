@@ -137,6 +137,7 @@ const AdvancedFeatures = {
         map.on(L.Draw.Event.CREATED, function (event) {
             const layer = event.layer;
             const type = event.layerType;
+            let measurementText = '';
 
             // Add measurement info
             if (type === 'polygon' || type === 'rectangle') {
@@ -145,12 +146,28 @@ const AdvancedFeatures = {
                     ? `${(area / 1000000).toFixed(2)} km²`
                     : `${area.toFixed(2)} m²`;
 
+                measurementText = `Area: ${areaText}`;
+
                 layer.bindPopup(`
                     <div class="measurement-popup">
                         <strong>${type.charAt(0).toUpperCase() + type.slice(1)}</strong><br>
-                        Area: ${areaText}
+                        ${measurementText}
                     </div>
                 `);
+
+                // Add permanent label
+                const center = layer.getBounds().getCenter();
+                const label = L.tooltip({
+                    permanent: true,
+                    direction: 'center',
+                    className: 'measurement-label'
+                })
+                    .setContent(areaText)
+                    .setLatLng(center);
+
+                label.addTo(map);
+                layer._measurementLabel = label;
+
             } else if (type === 'polyline') {
                 let distance = 0;
                 const latlngs = layer.getLatLngs();
@@ -161,12 +178,30 @@ const AdvancedFeatures = {
                     ? `${(distance / 1000).toFixed(2)} km`
                     : `${distance.toFixed(2)} m`;
 
+                measurementText = `Distance: ${distanceText}`;
+
                 layer.bindPopup(`
                     <div class="measurement-popup">
                         <strong>Line</strong><br>
-                        Distance: ${distanceText}
+                        ${measurementText}
                     </div>
                 `);
+
+                // Add label at midpoint
+                const midIndex = Math.floor(latlngs.length / 2);
+                const labelPos = latlngs[midIndex];
+                const label = L.tooltip({
+                    permanent: true,
+                    direction: 'top',
+                    className: 'measurement-label',
+                    offset: [0, -10]
+                })
+                    .setContent(distanceText)
+                    .setLatLng(labelPos);
+
+                label.addTo(map);
+                layer._measurementLabel = label;
+
             } else if (type === 'circle') {
                 const radius = layer.getRadius();
                 const radiusText = radius > 1000
@@ -177,14 +212,35 @@ const AdvancedFeatures = {
                     ? `${(area / 1000000).toFixed(2)} km²`
                     : `${area.toFixed(2)} m²`;
 
+                measurementText = `Radius: ${radiusText}<br>Area: ${areaText}`;
+
                 layer.bindPopup(`
                     <div class="measurement-popup">
                         <strong>Circle</strong><br>
-                        Radius: ${radiusText}<br>
-                        Area: ${areaText}
+                        ${measurementText}
                     </div>
                 `);
+
+                // Add label at center
+                const center = layer.getLatLng();
+                const label = L.tooltip({
+                    permanent: true,
+                    direction: 'center',
+                    className: 'measurement-label'
+                })
+                    .setContent(`R: ${radiusText}<br>A: ${areaText}`)
+                    .setLatLng(center);
+
+                label.addTo(map);
+                layer._measurementLabel = label;
             }
+
+            // Store reference to remove label when shape is deleted
+            layer.on('remove', function () {
+                if (layer._measurementLabel) {
+                    map.removeLayer(layer._measurementLabel);
+                }
+            });
 
             drawnItems.addLayer(layer);
         });
@@ -192,9 +248,84 @@ const AdvancedFeatures = {
         map.on(L.Draw.Event.EDITED, function (event) {
             // Update measurements for edited shapes
             event.layers.eachLayer(function (layer) {
-                if (layer.getPopup()) {
-                    layer.closePopup();
-                    // Recalculate and update popup...
+                // Remove old label
+                if (layer._measurementLabel) {
+                    map.removeLayer(layer._measurementLabel);
+                }
+
+                // Recalculate measurements
+                if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
+                    const area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+                    const areaText = area > 1000000
+                        ? `${(area / 1000000).toFixed(2)} km²`
+                        : `${area.toFixed(2)} m²`;
+
+                    const center = layer.getBounds().getCenter();
+                    const label = L.tooltip({
+                        permanent: true,
+                        direction: 'center',
+                        className: 'measurement-label'
+                    })
+                        .setContent(areaText)
+                        .setLatLng(center);
+
+                    label.addTo(map);
+                    layer._measurementLabel = label;
+
+                } else if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+                    let distance = 0;
+                    const latlngs = layer.getLatLngs();
+                    for (let i = 0; i < latlngs.length - 1; i++) {
+                        distance += latlngs[i].distanceTo(latlngs[i + 1]);
+                    }
+                    const distanceText = distance > 1000
+                        ? `${(distance / 1000).toFixed(2)} km`
+                        : `${distance.toFixed(2)} m`;
+
+                    const midIndex = Math.floor(latlngs.length / 2);
+                    const labelPos = latlngs[midIndex];
+                    const label = L.tooltip({
+                        permanent: true,
+                        direction: 'top',
+                        className: 'measurement-label',
+                        offset: [0, -10]
+                    })
+                        .setContent(distanceText)
+                        .setLatLng(labelPos);
+
+                    label.addTo(map);
+                    layer._measurementLabel = label;
+
+                } else if (layer instanceof L.Circle) {
+                    const radius = layer.getRadius();
+                    const radiusText = radius > 1000
+                        ? `${(radius / 1000).toFixed(2)} km`
+                        : `${radius.toFixed(2)} m`;
+                    const area = Math.PI * radius * radius;
+                    const areaText = area > 1000000
+                        ? `${(area / 1000000).toFixed(2)} km²`
+                        : `${area.toFixed(2)} m²`;
+
+                    const center = layer.getLatLng();
+                    const label = L.tooltip({
+                        permanent: true,
+                        direction: 'center',
+                        className: 'measurement-label'
+                    })
+                        .setContent(`R: ${radiusText}<br>A: ${areaText}`)
+                        .setLatLng(center);
+
+                    label.addTo(map);
+                    layer._measurementLabel = label;
+                }
+            });
+        });
+
+        // Handle deletion to clean up labels
+        map.on(L.Draw.Event.DELETED, function (event) {
+            event.layers.eachLayer(function (layer) {
+                if (layer._measurementLabel) {
+                    map.removeLayer(layer._measurementLabel);
                 }
             });
         });
@@ -342,7 +473,19 @@ const AdvancedFeatures = {
             map.on('click', clickHandler);
         };
 
-        return { startRadiusMode };
+        const clearRadius = () => {
+            if (radiusCircle) {
+                map.removeLayer(radiusCircle);
+                radiusCircle = null;
+                radiusMode = false;
+                map.getContainer().style.cursor = '';
+                if (clickHandler) {
+                    map.off('click', clickHandler);
+                }
+            }
+        };
+
+        return { startRadiusMode, clearRadius };
     },
 
     // Export Map

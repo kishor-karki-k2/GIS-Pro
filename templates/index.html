@@ -6,9 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
         content="Advanced GIS mapping application with interactive features, location data visualization, and real-time search capabilities">
-    <meta name="keywords" content="GIS, maps, geospatial, location data, leaflet, mapping">
-    <meta name="author" content="GIS Pro">
-
     <title>GIS Pro - Advanced Mapping Platform</title>
 
     <!-- Leaflet CSS -->
@@ -22,132 +19,160 @@
     <!-- Leaflet Draw CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/advanced-features.css') }}">
-
-    <!-- Font Awesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 
 <body>
     <div id="app">
         <!-- Header -->
-        <header class="app-header">
-            <div class="header-content">
-                <!-- Logo Section -->
-                <div class="logo-section">
-                    <div class="logo-icon">
-                        <i class="fas fa-globe-americas"></i>
-                    </div>
-                    <div class="logo-text">
-                        <h1>GIS Pro</h1>
-                        <p>Advanced Mapping Platform</p>
-                    </div>
+        <div class="header">
+            <div class="logo-section">
+                <div class="logo">
+                    <i class="fas fa-globe-americas" style="color: white; font-size: 1.2rem;"></i>
                 </div>
-
-                <!-- Search Bar -->
-                <div class="search-container">
-                    <div class="search-wrapper">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="searchInput"
-                            placeholder="Search for cities, places, landmarks worldwide..." autocomplete="off">
-                        <div id="searchResults" class="search-results"></div>
-                    </div>
-                </div>
-
-                <!-- Header Actions -->
-                <div class="header-actions">
-                    <div class="stat-badge">
-                        <i class="fas fa-map-marker-alt icon"></i>
-                        <div>
-                            <div class="value" id="totalLocations">0</div>
-                            <div class="label">Locations</div>
-                        </div>
-                    </div>
-
-                    <button class="control-btn tooltip" data-tooltip="Toggle Sidebar" id="sidebarToggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
+                <div class="brand">
+                    <h1>GIS Pro</h1>
+                    <p>Advanced Mapping Platform</p>
                 </div>
             </div>
-        </header>
 
-        <!-- Main Content -->
-        <div class="main-content">
+            <div class="search-container">
+                <span class="search-icon"><i class="fas fa-search"></i></span>
+                <input type="text" class="search-box" id="searchInput"
+                    placeholder="Search for cities, places, landmarks worldwide..." autocomplete="off">
+                <div id="searchResults" class="search-results"></div>
+            </div>
+
+            <div class="guidance-box" id="guidanceBox" style="margin-left: 1rem; margin-right: auto;">
+                <i class="fas fa-lightbulb" style="color: #fbbf24;"></i>
+                <span style="font-size: 0.8rem; color: #a5b4fc;">Zoom/Move map to filter results</span>
+            </div>
+
+            <div class="header-actions">
+                <div class="location-counter">
+                    <span><i class="fas fa-map-marker-alt" style="color: #667eea;"></i></span>
+                    <div>
+                        <div class="count" id="totalLocations">0</div>
+                        <div style="font-size: 0.7rem; color: #9ca3af;">Locations</div>
+                    </div>
+                </div>
+                <button class="menu-btn" id="sidebarToggle">
+                    <i class="fas fa-bars" style="color: #e0e0e0;"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Container -->
+        <div class="container">
             <!-- Sidebar -->
-            <aside class="sidebar" id="sidebar">
-                <!-- Filter Section -->
-                <div class="sidebar-section">
-                    <h3 class="section-title">Filter by Type</h3>
-                    <div class="filter-group">
-                        <button class="filter-btn active" data-filter="all">
-                            <span>
-                                <i class="fas fa-globe icon"></i>
-                                All Locations
-                            </span>
-                            <span class="count" id="countAll">0</span>
-                        </button>
-                        <button class="filter-btn" data-filter="park">
-                            <span>
-                                <i class="fas fa-tree icon"></i>
-                                Parks
-                            </span>
-                            <span class="count" id="countPark">0</span>
-                        </button>
-                        <button class="filter-btn" data-filter="landmark">
-                            <span>
-                                <i class="fas fa-landmark icon"></i>
-                                Landmarks
-                            </span>
-                            <span class="count" id="countLandmark">0</span>
-                        </button>
-                        <button class="filter-btn" data-filter="infrastructure">
-                            <span>
-                                <i class="fas fa-road icon"></i>
-                                Infrastructure
-                            </span>
-                            <span class="count" id="countInfrastructure">0</span>
-                        </button>
-                    </div>
+            <div class="sidebar active" id="sidebar">
+                <div class="filter-section">
+                    <div class="section-title">Filter by Type</div>
+
+                    <button class="filter-btn active" data-filter="all">
+                        <div class="left">
+                            <span class="icon">🌐</span>
+                            <span>All Locations</span>
+                        </div>
+                        <span class="badge" id="countAll">0</span>
+                    </button>
+
+                    <button class="filter-btn" data-filter="park">
+                        <div class="left">
+                            <span class="icon">🌳</span>
+                            <span>Parks</span>
+                        </div>
+                        <span class="badge" id="countPark">0</span>
+                    </button>
+
+                    <button class="filter-btn" data-filter="landmark">
+                        <div class="left">
+                            <span class="icon">🏛️</span>
+                            <span>Landmarks</span>
+                        </div>
+                        <span class="badge" id="countLandmark">0</span>
+                    </button>
+
+                    <button class="filter-btn" data-filter="infrastructure">
+                        <div class="left">
+                            <span class="icon">🏗️</span>
+                            <span>Infrastructure</span>
+                        </div>
+                        <span class="badge" id="countInfrastructure">0</span>
+                    </button>
                 </div>
 
-                <!-- Locations List -->
-                <div class="sidebar-section">
-                    <h3 class="section-title">Locations</h3>
+                <div class="locations-section">
+                    <div class="section-title">Locations</div>
+                    <div class="search-filter local-search-wrapper">
+                        <i class="fas fa-search local-search-icon"></i>
+                        <input type="text" class="filter-input local-search-input" id="localSearchInput"
+                            placeholder="Filter locations by name..." autocomplete="off">
+                        <button class="local-search-clear" id="localSearchClear" style="display: none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="local-search-info" id="localSearchInfo" style="display: none; margin-bottom: 1rem;">
+                        <i class="fas fa-info-circle"></i>
+                        <span id="localSearchCount">0</span> locations found
+                    </div>
+
                     <div class="location-list" id="locationList">
-                        <!-- Locations will be populated here -->
+                        <!-- Locations will be populated here by app.js -->
                     </div>
                 </div>
-            </aside>
+            </div>
 
             <!-- Map Container -->
             <div class="map-container">
                 <div id="map"></div>
 
-                <!-- Map Controls -->
+                <!-- Map Controls (Using new style) -->
                 <div class="map-controls">
-                    <button class="control-btn tooltip" data-tooltip="My Location" id="locateBtn">
+                    <button class="map-control-btn tooltip" data-tooltip="My Location" id="locateBtn">
                         <i class="fas fa-crosshairs"></i>
                     </button>
-                    <button class="control-btn tooltip" data-tooltip="Draw Tools" id="drawToolsBtn">
+                    <button class="map-control-btn tooltip" data-tooltip="Draw Tools" id="drawToolsBtn">
                         <i class="fas fa-pencil-ruler"></i>
                     </button>
-                    <button class="control-btn tooltip" data-tooltip="Radius Analysis" id="radiusBtn">
+                    <button class="map-control-btn tooltip" data-tooltip="Radius Analysis" id="radiusBtn">
                         <i class="fas fa-circle-notch"></i>
                     </button>
-                    <button class="control-btn tooltip" data-tooltip="Export Map" id="exportBtn">
+                    <button class="map-control-btn tooltip" data-tooltip="Clear Radius" id="clearRadiusBtn"
+                        style="display: none;">
+                        <i class="fas fa-eraser"></i>
+                    </button>
+                    <button class="map-control-btn tooltip" data-tooltip="Export Map" id="exportBtn">
                         <i class="fas fa-download"></i>
                     </button>
-                    <button class="control-btn tooltip" data-tooltip="Map Layers" id="layerToggle">
-                        <i class="fas fa-layer-group"></i>
-                    </button>
-                    <button class="control-btn tooltip" data-tooltip="Fullscreen" id="fullscreenBtn">
+                    <!-- Layer Toggle Button (Keep ID for compatibility if needed, but we have switcher below) 
+                         We can keep it as part of top controls or rely on bottom switcher. 
+                         Let's keep it but maybe hide it if the switcher replaces it? 
+                         User's design has Layer button in top controls AND switcher. 
+                         Let's keep it. -->
+
+                    <button class="map-control-btn tooltip" data-tooltip="Fullscreen" id="fullscreenBtn">
                         <i class="fas fa-expand"></i>
                     </button>
                 </div>
 
-                <!-- Info Panel -->
+                <!-- Layer Switcher (New Design Feature) -->
+                <div class="layer-switcher">
+                    <div class="layer-title">Map Style</div>
+                    <div class="layer-options">
+                        <button class="layer-btn active" onclick="changeMapStyle('dark')">Dark</button>
+                        <button class="layer-btn" onclick="changeMapStyle('light')">Light</button>
+                        <button class="layer-btn" onclick="changeMapStyle('satellite')">Satellite</button>
+                    </div>
+                </div>
+
+                <!-- Info Panel (Preserved functionality) -->
                 <div class="info-panel" id="infoPanel">
                     <div class="info-panel-header">
                         <div>
@@ -163,14 +188,14 @@
                         <p id="infoPanelDescription">Description goes here...</p>
 
                         <div class="properties-grid" id="propertiesGrid">
-                            <!-- Properties will be populated here -->
+                            <!-- Populated by JS -->
                         </div>
                     </div>
 
                     <div style="display: flex; gap: 0.5rem;">
                         <button class="btn btn-primary" id="directionsBtn">
                             <i class="fas fa-directions"></i>
-                            Get Directions
+                            Directions
                         </button>
                         <button class="btn btn-secondary" id="shareBtn">
                             <i class="fas fa-share-alt"></i>
@@ -181,7 +206,7 @@
             </div>
         </div>
 
-        <!-- Radius Modal (Phase 1) -->
+        <!-- Radius Modal (Preserved) -->
         <div class="radius-modal" id="radiusModal">
             <div class="radius-modal-content">
                 <div class="radius-modal-header">
@@ -213,23 +238,62 @@
                 </div>
             </div>
         </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Loading locations...</div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- Leaflet JS -->
+    <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
-    <!-- Leaflet MarkerCluster JS -->
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-
-    <!-- Leaflet Draw JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
-    <!-- Advanced Features Module -->
+    <!-- App Scripts -->
     <script src="{{ url_for('static', filename='js/advanced-features.js') }}"></script>
-
-    <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+    <!-- Map Style Switcher Logic (Simple global function for the onclicks) -->
+    <script>
+        // Store map styles
+        const mapStyles = {
+            dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            light: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+            satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        };
+
+        function changeMapStyle(style) {
+            // Find the app instance from the global scope (we'll attach it to window in app.js if needed, 
+            // or we can access the tile layer if we can find it).
+            // Actually, app.js likely has `this.tileLayer`.
+            // We need a way to access the app instance.
+
+            // Temporary, safe way: Dispath a custom event that app.js listens to?
+            // Or assume app.js exposes `window.gisApp`.
+
+            if (window.gisApp && window.gisApp.map) {
+                // Remove current layer if logical
+                // This requires app.js to expose the tileLayer.
+                // Let's implement this properly in app.js and expose it.
+                window.gisApp.changeMapStyle(style);
+            } else {
+                console.warn('GIS App not ready');
+            }
+
+            // Update visible buttons
+            document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
+            // Find the button that was clicked (event.target)
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+        }
+    </script>
 </body>
 
 </html>

@@ -5,22 +5,39 @@
 class GISApp {
     constructor() {
         this.map = null;
+        this.baseLayers = {};
+        this.tileLayer = null; // Current main tile layer
         this.markers = {};
         this.markerCluster = null;
         this.locations = [];
         this.currentFilter = 'all';
         this.selectedLocation = null;
-        this.baseLayers = {};
         this.currentLayer = 'street';
+        this.userLocation = null;
         this.loadingLocations = false;
         this.lastBounds = null;
 
-        // Advanced features (Phase 1)
+        // Prevent auto-zoom loop flags
+        this.isProgrammaticMove = false;
+        this.userHasSearched = false;
+        this.autoLoadEnabled = true; // Enable auto-load by default per user request
+
+        // Advanced features
         this.drawTools = null;
         this.drawnItems = null;
-        this.drawToolsActive = false; // Track draw control state
+        this.drawToolsActive = false;
         this.radiusAnalysis = null;
         this.shortcuts = null;
+
+        // Expose globally
+        window.gisApp = this;
+
+        // Map Styles
+        this.mapStyles = {
+            dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            light: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+            satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        };
 
         this.init();
     }
@@ -36,6 +53,9 @@ class GISApp {
         this.initEventListeners();
         this.setupMapMoveListener();
         this.initAdvancedFeatures(); // Phase 1 features
+
+        // Make sidebar visible by default
+        document.getElementById('sidebar').classList.add('active');
     }
 
     initMap() {
@@ -43,22 +63,17 @@ class GISApp {
         this.map = L.map('map', {
             zoomControl: false,
             attributionControl: false
-        }).setView([20, 0], 2); // Global view - zoom level 2 shows whole world
+        }).setView([20, 0], 2);
 
-        // Street Map Layer
+        // Define base layers
         this.baseLayers.street = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
             maxZoom: 19
         });
 
-        // Satellite Layer
-        this.baseLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri',
-            maxZoom: 19
-        });
-
-        // Add default layer
-        this.baseLayers.street.addTo(this.map);
+        // Initialize tileLayer with default
+        this.tileLayer = this.baseLayers.street;
+        this.tileLayer.addTo(this.map);
 
         // Add custom zoom control
         L.control.zoom({
@@ -80,8 +95,8 @@ class GISApp {
                 else if (count > 5) size = 'medium';
 
                 return L.divIcon({
-                    html: `<div class="marker-cluster-custom"><span>${count}</span></div>`,
-                    className: `marker-cluster-${size}`,
+                    html: '<div><span>' + count + '</span></div>',
+                    className: 'marker-cluster marker-cluster-' + size,
                     iconSize: L.point(40, 40)
                 });
             }
@@ -97,6 +112,36 @@ class GISApp {
         }).addTo(this.map);
     }
 
+    changeMapStyle(style) {
+        if (!this.map || !this.tileLayer) return;
+
+        // Use exposed mapStyles logic or internal logic
+        const url = this.mapStyles[style];
+
+        if (url) {
+            this.map.removeLayer(this.tileLayer);
+            this.tileLayer = L.tileLayer(url, {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(this.map);
+
+            // Update state
+            this.currentLayer = style;
+
+            // Update UI buttons if they exist
+            document.querySelectorAll('.layer-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(style));
+            });
+
+            // Safe update for optional toggle button
+            const toggleBtn = document.getElementById('layerToggle');
+            if (toggleBtn) {
+                toggleBtn.classList.toggle('active', style === 'satellite');
+            }
+        }
+    }
+
+
     // ========================================
     // Data Loading
     // ========================================
@@ -106,7 +151,7 @@ class GISApp {
 
         try {
             this.loadingLocations = true;
-            this.showLoadingIndicator(true);
+            this.showLoadingOverlay(true);
 
             const bounds = this.map.getBounds();
             const south = bounds.getSouth();
@@ -124,7 +169,7 @@ class GISApp {
                 // Only fetch if map moved more than 20% of current viewport
                 if (latDiff < currentLatSpan * 0.2 && lngDiff < currentLngSpan * 0.2) {
                     this.loadingLocations = false;
-                    this.showLoadingIndicator(false);
+                    this.showLoadingOverlay(false);
                     return;
                 }
             }
@@ -132,19 +177,19 @@ class GISApp {
             // Store bounds to avoid duplicate calls
             this.lastBounds = { south, west, north, east };
 
-            const typeParam = this.currentFilter !== 'all' ? `&type=${this.currentFilter}` : '';
-            const url = `/api/locations/bounds?south=${south}&west=${west}&north=${north}&east=${east}${typeParam}`;
+            // Always fetch ALL types to ensure counts are accurate for all categories
+            // Client-side filtering (in renderLocations) will handle what is shown
+            const url = `/api/locations/bounds?south=${south}&west=${west}&north=${north}&east=${east}`;
 
             const response = await fetch(url);
             const newLocations = await response.json();
 
-            // Only update if we got different data
-            if (JSON.stringify(newLocations) !== JSON.stringify(this.locations)) {
-                this.locations = newLocations;
-                this.renderLocations();
-                this.updateCounts();
-                this.updateTotalCount();
-            }
+            // Always update locations - don't block updates with JSON comparison
+            this.locations = newLocations;
+
+            this.renderLocations();
+            this.updateCounts();
+            this.updateTotalCount();
 
             // No notification on successful load - just update quietly in background
         } catch (error) {
@@ -153,22 +198,29 @@ class GISApp {
             this.showNotification('Unable to load locations. Using cached data.', 'error');
         } finally {
             this.loadingLocations = false;
-            this.showLoadingIndicator(false);
+            this.showLoadingOverlay(false);
         }
     }
 
     setupMapMoveListener() {
         let moveTimeout;
 
-        // Load locations when map movement stops (only if zoomed in enough)
+        // Load locations when map movement stops
         this.map.on('moveend', () => {
             clearTimeout(moveTimeout);
+
+            // Guidance box stays visible permanently (User Request)
+
+            // Don't auto-load if it's a programmatic move (e.g. clicking a card)
+            if (this.isProgrammaticMove) {
+                this.isProgrammaticMove = false; // Reset flag
+                return;
+            }
+
             moveTimeout = setTimeout(() => {
-                // Only load locations if zoomed in enough (zoom > 8)
-                if (this.map.getZoom() > 8) {
-                    this.loadLocationsByBounds();
-                }
-            }, 2000); // 2 seconds delay to prevent continuous fetching
+                // Always reload based on new bounds to show relevant content
+                this.loadLocationsByBounds();
+            }, 500); // Reduced delay for snappier response
         });
     }
 
@@ -183,14 +235,12 @@ class GISApp {
         }, 200);
     }
 
-    showLoadingIndicator(show) {
-        const badge = document.querySelector('.stat-badge');
+    showLoadingOverlay(show) {
+        const overlay = document.getElementById('loadingOverlay');
         if (show) {
-            badge.style.opacity = '0.85'; // More subtle opacity change
-            badge.classList.add('pulse');
+            overlay.classList.add('active');
         } else {
-            badge.style.opacity = '1';
-            badge.classList.remove('pulse');
+            overlay.classList.remove('active');
         }
     }
 
@@ -215,30 +265,33 @@ class GISApp {
         // Render location cards
         this.renderLocationCards(filteredLocations);
 
-        // Fit bounds if there are locations
-        if (filteredLocations.length > 0) {
+        // Only auto-fit bounds on first load or if user hasn't searched
+        // This prevents the annoying auto-zoom loop
+        if (filteredLocations.length > 0 && !this.userHasSearched) {
             const bounds = this.markerCluster.getBounds();
             if (bounds.isValid()) {
+                this.isProgrammaticMove = true; // Mark as programmatic
                 this.map.fitBounds(bounds, { padding: [50, 50] });
             }
         }
     }
 
     addMarker(location) {
-        const icon = this.getMarkerIcon(location.type);
+        const icon = this.getMarkerIcon(location.type, false);
 
         const marker = L.marker([location.lat, location.lng], {
             icon: icon,
-            title: location.name
+            title: location.name,
+            locationId: location.id // Store location ID for reference
         });
 
-        // Add popup
+        // Add popup with data attribute instead of inline onclick
         const popupContent = `
             <div class="custom-popup">
                 <h3>${location.name}</h3>
                 <p class="location-type ${location.type}">${location.type}</p>
                 <p>${location.description}</p>
-                <button class="btn btn-primary btn-sm" onclick="app.showLocationDetails(${location.id})">
+                <button class="btn btn-primary btn-sm view-details-btn" data-location-id="${location.id}">
                     View Details
                 </button>
             </div>
@@ -255,7 +308,7 @@ class GISApp {
         this.markerCluster.addLayer(marker);
     }
 
-    getMarkerIcon(type) {
+    getMarkerIcon(type, isHighlighted = false) {
         const iconMap = {
             park: { icon: 'tree', color: '#4CAF50' },
             landmark: { icon: 'landmark', color: '#2196F3' },
@@ -264,9 +317,12 @@ class GISApp {
 
         const config = iconMap[type] || { icon: 'map-marker-alt', color: '#607D8B' };
 
+        // Add highlight class if this marker is selected
+        const highlightClass = isHighlighted ? ' highlighted' : '';
+
         return L.divIcon({
             html: `
-                <div class="custom-marker" style="background: ${config.color};">
+                <div class="custom-marker${highlightClass}" style="background: ${config.color};">
                     <i class="fas fa-${config.icon}"></i>
                 </div>
             `,
@@ -282,8 +338,8 @@ class GISApp {
 
         if (locations.length === 0) {
             listContainer.innerHTML = `
-                <div style="text-align: center; padding: 2rem; color: var(--text-tertiary);">
-                    <i class="fas fa-map-marked-alt" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                <div style="text-align: center; padding: 2rem; color: #9ca3af;">
+                    <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
                     <p>No locations found</p>
                 </div>
             `;
@@ -291,21 +347,18 @@ class GISApp {
         }
 
         listContainer.innerHTML = locations.map(location => `
-            <div class="location-card ${this.selectedLocation === location.id ? 'active' : ''}" 
+            <div class="location-card ${this.selectedLocation === location.id ? 'selected' : ''}" 
                  data-location-id="${location.id}"
-                 onclick="app.selectLocation(${location.id})">
+                 onclick="window.gisApp.selectLocation(${location.id})">
                 <div class="location-header">
-                    <div>
-                        <h3 class="location-title">${location.name}</h3>
-                        <span class="location-type ${location.type}">${location.type}</span>
-                    </div>
+                    <div class="location-name">${location.name}</div>
+                    <span class="location-badge">${location.type}</span>
                 </div>
-                <p class="location-description">${location.description}</p>
-                <div class="location-meta">
-                    <span>
-                        <i class="fas fa-map-marker-alt"></i>
-                        ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}
-                    </span>
+                <!-- Using description as the subtitle since 'Christian' was the example text -->
+                <div class="location-type" style="margin-top: 2px;">${location.description || location.type}</div>
+                <div class="location-coords" style="margin-top: 6px;">
+                    <i class="fas fa-map-marker-alt" style="color: #ef4444; margin-right: 4px;"></i>
+                    ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}
                 </div>
             </div>
         `).join('');
@@ -321,29 +374,68 @@ class GISApp {
 
         if (!location) return;
 
-        // Update UI
+        // Update UI - highlight card
         document.querySelectorAll('.location-card').forEach(card => {
-            card.classList.toggle('active', card.dataset.locationId == locationId);
+            const isSelected = card.dataset.locationId == locationId;
+            card.classList.toggle('selected', isSelected);
+            if (isSelected) card.classList.add('active'); // Optional: keep active for compatibility if CSS uses it
         });
 
-        // Pan to marker
-        this.map.setView([location.lat, location.lng], 15, {
-            animate: true,
-            duration: 1
-        });
-
-        // Open marker popup
-        if (this.markers[locationId]) {
-            this.markers[locationId].openPopup();
+        // Scroll to the selected card in sidebar
+        const selectedCard = document.querySelector(`.location-card[data-location-id="${locationId}"]`);
+        if (selectedCard) {
+            selectedCard.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'nearest'
+            });
         }
+
+        // Highlight the marker by updating its icon
+        this.highlightMarker(locationId);
+
+        // Fly to marker with close zoom (mark as programmatic to prevent reload)
+        this.isProgrammaticMove = true;
+
+        // Use flyTo for smooth animation to exact location
+        this.map.flyTo([location.lat, location.lng], 17, {
+            animate: true,
+            duration: 1.5,
+            easeLinearity: 0.25
+        });
+
+        // Open marker popup after fly animation
+        setTimeout(() => {
+            if (this.markers[locationId]) {
+                this.markers[locationId].openPopup();
+            }
+        }, 1600); // Wait for fly animation to complete
 
         // Show details in info panel
         this.showLocationDetails(locationId);
     }
 
+    highlightMarker(locationId) {
+        // Remove highlight from all markers first
+        Object.keys(this.markers).forEach(id => {
+            const marker = this.markers[id];
+            const location = this.locations.find(loc => loc.id === parseInt(id));
+            if (location) {
+                const isHighlighted = (parseInt(id) === locationId);
+                const newIcon = this.getMarkerIcon(location.type, isHighlighted);
+                marker.setIcon(newIcon);
+            }
+        });
+    }
+
     showLocationDetails(locationId) {
         const location = this.locations.find(loc => loc.id === locationId);
-        if (!location) return;
+
+        if (!location) {
+            console.warn('Location not found:', locationId);
+            this.showNotification('Location details not available. Try searching for this area first.', 'warning');
+            return;
+        }
 
         const panel = document.getElementById('infoPanel');
         const title = document.getElementById('infoPanelTitle');
@@ -351,13 +443,13 @@ class GISApp {
         const description = document.getElementById('infoPanelDescription');
         const propertiesGrid = document.getElementById('propertiesGrid');
 
-        title.textContent = location.name;
-        type.textContent = location.type;
-        type.className = `location-type ${location.type}`;
-        description.textContent = location.description;
+        title.textContent = location.name || 'Unknown Location';
+        type.textContent = location.type || 'Unknown';
+        type.className = `location-type ${location.type || ''}`;
+        description.textContent = location.description || 'No description available.';
 
         // Render properties
-        if (location.properties) {
+        if (location.properties && Object.keys(location.properties).length > 0) {
             propertiesGrid.innerHTML = Object.entries(location.properties)
                 .map(([key, value]) => `
                     <div class="property-item">
@@ -365,6 +457,8 @@ class GISApp {
                         <div class="property-value">${value}</div>
                     </div>
                 `).join('');
+        } else {
+            propertiesGrid.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.875rem;">No additional properties.</p>';
         }
 
         panel.classList.add('active');
@@ -386,7 +480,8 @@ class GISApp {
             btn.classList.toggle('active', btn.dataset.filter === filterType);
         });
 
-        // Reload locations with new filter
+        // Force reload by clearing lastBounds (so the bounds check doesn't block the new filter)
+        this.lastBounds = null;
         this.loadLocationsByBounds();
     }
 
@@ -451,8 +546,12 @@ class GISApp {
         // Hide search results
         this.hideSearchResults();
 
-        // Clear search input
-        document.getElementById('searchInput').value = '';
+        // Keep search text showing the navigated location
+        document.getElementById('searchInput').value = name;
+
+        // Mark that user has searched - keep results stable
+        this.userHasSearched = true;
+        this.isProgrammaticMove = true;
 
         // Pan to location with animation
         this.map.flyTo([lat, lng], 13, {
@@ -463,8 +562,9 @@ class GISApp {
         // Show notification
         this.showNotification(`Navigating to ${name}`, 'success');
 
-        // Force load locations for this area after navigation
+        // Load locations for this area after navigation completes
         setTimeout(() => {
+            this.isProgrammaticMove = true; // Mark as programmatic before load
             this.loadLocationsByBounds();
         }, 1600);
     }
@@ -490,6 +590,8 @@ class GISApp {
             (position) => {
                 const { latitude, longitude } = position.coords;
 
+                // Mark as programmatic move
+                this.isProgrammaticMove = true;
                 this.map.setView([latitude, longitude], 14, {
                     animate: true
                 });
@@ -512,7 +614,11 @@ class GISApp {
 
                 btn.classList.remove('active');
 
-                // Load locations for this area (will happen automatically via moveend event)
+                // Load locations for current area after a brief delay
+                setTimeout(() => {
+                    this.isProgrammaticMove = true;
+                    this.loadLocationsByBounds();
+                }, 500);
             },
             (error) => {
                 btn.classList.remove('active');
@@ -523,19 +629,16 @@ class GISApp {
     }
 
     toggleLayer() {
-        const btn = document.getElementById('layerToggle');
+        // Cycle through styles: dark -> light -> satellite -> dark
+        const styles = ['dark', 'light', 'satellite'];
+        let current = this.currentLayer === 'street' ? 'dark' : this.currentLayer;
 
-        if (this.currentLayer === 'street') {
-            this.map.removeLayer(this.baseLayers.street);
-            this.baseLayers.satellite.addTo(this.map);
-            this.currentLayer = 'satellite';
-            btn.classList.add('active');
-        } else {
-            this.map.removeLayer(this.baseLayers.satellite);
-            this.baseLayers.street.addTo(this.map);
-            this.currentLayer = 'street';
-            btn.classList.remove('active');
-        }
+        // Find next style
+        const currentIndex = styles.indexOf(current);
+        const nextIndex = (currentIndex + 1) % styles.length;
+        const nextStyle = styles[nextIndex];
+
+        this.changeMapStyle(nextStyle);
     }
 
     toggleFullscreen() {
@@ -557,6 +660,13 @@ class GISApp {
 
     toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('active');
+
+        // Wait for CSS transition (300ms), then resize map to fill space
+        setTimeout(() => {
+            if (this.map) {
+                this.map.invalidateSize();
+            }
+        }, 350);
     }
 
     // ========================================
@@ -582,6 +692,23 @@ class GISApp {
             }
         });
 
+        // Global event delegation for View Details button in popups
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('view-details-btn') ||
+                e.target.closest('.view-details-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const btn = e.target.classList.contains('view-details-btn')
+                    ? e.target
+                    : e.target.closest('.view-details-btn');
+
+                const locationId = parseInt(btn.getAttribute('data-location-id'));
+                this.showLocationDetails(locationId);
+            }
+        });
+
+
         // Filter buttons
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -594,12 +721,23 @@ class GISApp {
             this.locateUser();
         });
 
-        document.getElementById('layerToggle').addEventListener('click', () => {
-            this.toggleLayer();
-        });
+        const layerToggleBtn = document.getElementById('layerToggle');
+        if (layerToggleBtn) {
+            layerToggleBtn.addEventListener('click', () => {
+                this.toggleLayer();
+            });
+        }
 
         document.getElementById('fullscreenBtn').addEventListener('click', () => {
             this.toggleFullscreen();
+        });
+
+        // Listen for fullscreen changes (handles Esc key too)
+        document.addEventListener('fullscreenchange', () => {
+            // give it a moment to resize
+            setTimeout(() => {
+                if (this.map) this.map.invalidateSize();
+            }, 100);
         });
 
         document.getElementById('sidebarToggle').addEventListener('click', () => {
@@ -613,6 +751,10 @@ class GISApp {
 
         document.getElementById('radiusBtn').addEventListener('click', () => {
             this.startRadiusAnalysis();
+        });
+
+        document.getElementById('clearRadiusBtn').addEventListener('click', () => {
+            this.clearRadiusAnalysis();
         });
 
         document.getElementById('exportBtn').addEventListener('click', () => {
@@ -648,11 +790,83 @@ class GISApp {
             }
         });
 
+        // Local search filter
+        const localSearchInput = document.getElementById('localSearchInput');
+        const localSearchClear = document.getElementById('localSearchClear');
+        const localSearchInfo = document.getElementById('localSearchInfo');
+        const localSearchCount = document.getElementById('localSearchCount');
+
+        let localSearchTimeout;
+
+        localSearchInput.addEventListener('input', (e) => {
+            clearTimeout(localSearchTimeout);
+            const query = e.target.value.trim();
+
+            // Show/hide clear button
+            localSearchClear.style.display = query ? 'flex' : 'none';
+
+            localSearchTimeout = setTimeout(() => {
+                this.filterLocalResults(query);
+            }, 200);
+        });
+
+        // Clear button
+        localSearchClear.addEventListener('click', () => {
+            localSearchInput.value = '';
+            localSearchClear.style.display = 'none';
+            localSearchInfo.style.display = 'none';
+            this.filterLocalResults('');
+        });
+
         // Map events
         this.map.on('click', () => {
             // Close info panel when clicking on map
             // this.closeInfoPanel();
         });
+    }
+
+    // ========================================
+    // Local Search Filter
+    // ========================================
+
+    filterLocalResults(query) {
+        const cards = document.querySelectorAll('.location-card');
+        const localSearchInfo = document.getElementById('localSearchInfo');
+        const localSearchCount = document.getElementById('localSearchCount');
+
+        if (!query) {
+            // Show all cards
+            cards.forEach(card => {
+                card.style.display = ''; // Reset to default CSS
+            });
+            localSearchInfo.style.display = 'none';
+            return;
+        }
+
+        const searchTerm = query.toLowerCase();
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const locationId = parseInt(card.dataset.locationId);
+            const location = this.locations.find(loc => loc.id === locationId);
+
+            if (location) {
+                const matchesName = location.name.toLowerCase().includes(searchTerm);
+                const matchesDescription = location.description.toLowerCase().includes(searchTerm);
+                const matchesType = location.type.toLowerCase().includes(searchTerm);
+
+                if (matchesName || matchesDescription || matchesType) {
+                    card.style.display = ''; // Reset to default CSS (block)
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            }
+        });
+
+        // Update and show result count
+        localSearchCount.textContent = visibleCount;
+        localSearchInfo.style.display = 'flex';
     }
 
     // ========================================
@@ -727,12 +941,20 @@ class GISApp {
 
         const btn = document.getElementById('drawToolsBtn');
 
-        // Track state with boolean flag (controls are not layers!)
         if (!this.drawToolsActive) {
             this.map.addControl(this.drawTools);
             this.drawToolsActive = true;
             btn.classList.add('active');
-            this.showNotification('Draw tools activated! Select a shape to draw.', 'success');
+
+            // Make toolbar draggable
+            setTimeout(() => {
+                const toolbar = document.querySelector('.leaflet-top.leaflet-left');
+                if (toolbar) {
+                    this.makeToolbarDraggable(toolbar);
+                }
+            }, 100);
+
+            this.showNotification('Draw tools activated! Drag toolbar to reposition.', 'success');
         } else {
             this.map.removeControl(this.drawTools);
             this.drawToolsActive = false;
@@ -741,11 +963,91 @@ class GISApp {
         }
     }
 
+    makeToolbarDraggable(toolbar) {
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+
+        // Add visual indicator that it's draggable
+        toolbar.style.cursor = 'move';
+        toolbar.title = 'Drag to reposition';
+
+        toolbar.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            // Only drag if clicking on the toolbar background, not on buttons
+            if (e.target.tagName === 'A' || e.target.closest('a')) {
+                return;
+            }
+
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+
+            if (e.target === toolbar || e.target.classList.contains('leaflet-draw-toolbar')) {
+                isDragging = true;
+                toolbar.style.transition = 'none';
+            }
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+
+                xOffset = currentX;
+                yOffset = currentY;
+
+                setTranslate(currentX, currentY, toolbar);
+            }
+        }
+
+        function dragEnd(e) {
+            if (isDragging) {
+                initialX = currentX;
+                initialY = currentY;
+                isDragging = false;
+            }
+        }
+
+        function setTranslate(xPos, yPos, el) {
+            el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+        }
+    }
+
 
     startRadiusAnalysis() {
         if (!this.radiusAnalysis) return;
         this.radiusAnalysis.startRadiusMode();
         this.showNotification('Click on the map to place a radius circle', 'info');
+
+        // Show clear button after radius is drawn
+        setTimeout(() => {
+            const clearBtn = document.getElementById('clearRadiusBtn');
+            if (clearBtn) {
+                clearBtn.style.display = 'block';
+            }
+        }, 500);
+    }
+
+    clearRadiusAnalysis() {
+        if (!this.radiusAnalysis) return;
+        this.radiusAnalysis.clearRadius();
+
+        // Hide clear button
+        const clearBtn = document.getElementById('clearRadiusBtn');
+        if (clearBtn) {
+            clearBtn.style.display = 'none';
+        }
+
+        this.showNotification('Radius analysis cleared', 'info');
     }
 
     async exportMap() {
@@ -788,6 +1090,38 @@ style.textContent = `
         color: white;
         font-size: 14px;
     }
+    
+    /* Highlighted marker styles */
+    .custom-marker.highlighted {
+        width: 42px !important;
+        height: 42px !important;
+        border: 3px solid #FFD700 !important;
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.8), 
+                    0 0 50px rgba(255, 215, 0, 0.4),
+                    0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        animation: markerPulse 2s ease-in-out infinite !important;
+        z-index: 1000 !important;
+    }
+    
+    .custom-marker.highlighted i {
+        font-size: 16px !important;
+    }
+    
+    @keyframes markerPulse {
+        0%, 100% {
+            transform: rotate(-45deg) scale(1);
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.8), 
+                        0 0 50px rgba(255, 215, 0, 0.4),
+                        0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        50% {
+            transform: rotate(-45deg) scale(1.1);
+            box-shadow: 0 0 35px rgba(255, 215, 0, 1), 
+                        0 0 70px rgba(255, 215, 0, 0.6),
+                        0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+    }
+    
     
     .marker-cluster-custom {
         background: var(--gradient-primary);
@@ -865,8 +1199,6 @@ document.head.appendChild(style);
 // Initialize Application
 // ========================================
 
-let app;
-
 document.addEventListener('DOMContentLoaded', () => {
-    app = new GISApp();
+    window.app = new GISApp();
 });
