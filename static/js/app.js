@@ -573,7 +573,19 @@ class GISApp {
             const sidebar = document.getElementById('sidebar');
             const backdrop = document.getElementById('mobileBackdrop');
             sidebar.classList.remove('active');
-            backdrop.classList.remove('active');
+            if (backdrop) backdrop.classList.remove('active');
+
+            // Reset mobile nav button icon
+            const mobileNavBtn = document.getElementById('mobileNavBtn');
+            if (mobileNavBtn) {
+                mobileNavBtn.classList.remove('active');
+                const icon = mobileNavBtn.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+            }
+
             setTimeout(() => {
                 if (this.map) this.map.invalidateSize();
             }, 350);
