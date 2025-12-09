@@ -69,6 +69,13 @@ class GISApp {
                 this.map.invalidateSize();
             }
         });
+
+        // Show zoom prompt on initial load since we start at world view (zoom 2)
+        setTimeout(() => {
+            if (this.map.getZoom() < 6) {
+                this.showZoomPrompt();
+            }
+        }, 500);
     }
 
     initMap() {
@@ -161,6 +168,18 @@ class GISApp {
 
     async loadLocationsByBounds() {
         if (this.loadingLocations) return;
+
+        // Check if zoomed out too far (minimum zoom level 6 for reasonable data)
+        const currentZoom = this.map.getZoom();
+        const MIN_ZOOM_FOR_DATA = 6;
+
+        if (currentZoom < MIN_ZOOM_FOR_DATA) {
+            this.showZoomPrompt();
+            return;
+        }
+
+        // Hide zoom prompt if visible
+        this.hideZoomPrompt();
 
         try {
             this.loadingLocations = true;
@@ -1145,6 +1164,150 @@ class GISApp {
             notification.style.animation = 'slideOut 0.3s ease-out';
             setTimeout(() => notification.remove(), 300);
         }, 3000);
+    }
+
+    // ========================================
+    // Zoom Prompt Modal
+    // ========================================
+
+    showZoomPrompt() {
+        // Don't show if already showing
+        if (document.getElementById('zoomPromptModal')) return;
+
+        const modal = document.createElement('div');
+        modal.id = 'zoomPromptModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 32, 41, 0.98);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            z-index: 10000;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease-out;
+            text-align: center;
+            color: #e0e0e0;
+        `;
+
+        modal.innerHTML = `
+            <div style="margin-bottom: 1.5rem;">
+                <i class="fas fa-globe-americas" style="font-size: 3rem; color: #667eea; margin-bottom: 1rem; display: block;"></i>
+                <h3 style="color: #ffffff; margin-bottom: 0.5rem; font-size: 1.25rem;">Area Too Large</h3>
+                <p style="color: #9ca3af; font-size: 0.9rem; margin: 0;">
+                    Please zoom in or search for a specific city/state to load locations.
+                </p>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <input type="text" 
+                    id="zoomPromptSearch" 
+                    placeholder="Enter city, state, or country..." 
+                    style="
+                        width: 100%;
+                        padding: 0.75rem 1rem;
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid rgba(255, 255, 255, 0.15);
+                        border-radius: 10px;
+                        color: #e0e0e0;
+                        font-size: 1rem;
+                        outline: none;
+                        box-sizing: border-box;
+                    "
+                />
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
+                <button id="zoomPromptSearchBtn" style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 10px;
+                    font-size: 0.95rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                ">
+                    <i class="fas fa-search"></i>
+                    Search Location
+                </button>
+                <button id="zoomPromptCloseBtn" style="
+                    background: rgba(255, 255, 255, 0.05);
+                    color: #9ca3af;
+                    border: 1px solid rgba(255, 255, 255, 0.15);
+                    padding: 0.75rem 1.25rem;
+                    border-radius: 10px;
+                    font-size: 0.95rem;
+                    cursor: pointer;
+                ">
+                    Close
+                </button>
+            </div>
+            
+            <p style="margin-top: 1rem; font-size: 0.8rem; color: #6b7280;">
+                Tip: Zoom level 6+ is required to fetch location data
+            </p>
+        `;
+
+        // Add backdrop
+        const backdrop = document.createElement('div');
+        backdrop.id = 'zoomPromptBackdrop';
+        backdrop.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 9999;
+        `;
+
+        document.body.appendChild(backdrop);
+        document.body.appendChild(modal);
+
+        // Focus input
+        setTimeout(() => {
+            document.getElementById('zoomPromptSearch')?.focus();
+        }, 100);
+
+        // Event listeners
+        document.getElementById('zoomPromptSearchBtn').addEventListener('click', () => {
+            const query = document.getElementById('zoomPromptSearch').value.trim();
+            if (query) {
+                this.hideZoomPrompt();
+                // Use the global search input and trigger search
+                document.getElementById('searchInput').value = query;
+                this.searchLocation(query);
+            }
+        });
+
+        document.getElementById('zoomPromptSearch').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('zoomPromptSearchBtn').click();
+            }
+        });
+
+        document.getElementById('zoomPromptCloseBtn').addEventListener('click', () => {
+            this.hideZoomPrompt();
+        });
+
+        backdrop.addEventListener('click', () => {
+            this.hideZoomPrompt();
+        });
+    }
+
+    hideZoomPrompt() {
+        document.getElementById('zoomPromptModal')?.remove();
+        document.getElementById('zoomPromptBackdrop')?.remove();
     }
 
     // ========================================
