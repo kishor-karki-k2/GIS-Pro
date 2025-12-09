@@ -1,6 +1,6 @@
 /* ==========================================================================
-   GIS Pro - Map-First Mobile Design
-   Priority: Map visibility, touch-friendly, progressive disclosure
+   GIS Pro - Mobile View with Scaled Layout
+   Shows zoomed-out desktop view, page is fixed, only map can zoom
    ========================================================================== */
 
 /* ============================================
@@ -10,68 +10,26 @@
 @media (max-width: 768px) {
 
     /* ----------------------------------------
-       CORE LAYOUT: Full-screen map
+       SCALED LAYOUT: Zoomed out desktop view
        ---------------------------------------- */
     body {
         overflow: hidden;
+        width: 100vw;
+        height: 100vh;
     }
 
     #app {
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-        height: 100dvh;
+        transform: scale(0.7);
+        transform-origin: top left;
+        width: 143%;
+        /* 100 / 0.7 */
+        height: 143vh;
+        overflow: hidden;
     }
 
     /* ----------------------------------------
-       HEADER: Floating, compact
+       PREVENT ZOOM ON INPUTS
        ---------------------------------------- */
-    .header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 1000;
-        background: linear-gradient(180deg, rgba(15, 17, 23, 0.95) 0%, rgba(15, 17, 23, 0.85) 100%);
-        backdrop-filter: blur(15px);
-        -webkit-backdrop-filter: blur(15px);
-        padding: 0.6rem 0.75rem;
-        padding-top: calc(0.6rem + env(safe-area-inset-top));
-        gap: 0.5rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .logo-section {
-        flex: 0 0 auto;
-    }
-
-    .logo {
-        width: 32px;
-        height: 32px;
-    }
-
-    .brand h1 {
-        font-size: 0.95rem;
-    }
-
-    .brand p {
-        display: none;
-    }
-
-    .search-container {
-        flex: 1;
-        margin: 0 0.5rem;
-        max-width: none;
-    }
-
-    .search-box {
-        padding: 0.55rem 0.75rem 0.55rem 2.2rem;
-        font-size: 16px !important;
-        /* Prevents iOS auto-zoom on focus */
-        border-radius: 10px;
-    }
-
-    /* Prevent zoom on all form inputs */
     input,
     select,
     textarea {
@@ -79,143 +37,70 @@
         touch-action: manipulation;
     }
 
-    .search-icon {
-        left: 0.7rem;
-        font-size: 0.8rem;
+    .search-box {
+        font-size: 16px !important;
     }
 
-    /* Hide guidance box on mobile */
+    /* ----------------------------------------
+       HIDE ELEMENTS NOT NEEDED IN SCALED VIEW
+       ---------------------------------------- */
     .guidance-box {
         display: none !important;
     }
 
-    .header-actions {
-        gap: 0.4rem;
-    }
-
-    .location-counter {
-        display: none;
-    }
-
-    .menu-btn {
-        display: none;
-        /* Hide header menu btn, use FAB instead */
+    .tooltip::after {
+        display: none !important;
     }
 
     /* ----------------------------------------
-       CONTAINER & MAP: Full viewport
+       MOBILE NAV BUTTON (stays at real size)
        ---------------------------------------- */
-    .container {
+    .mobile-nav-btn {
+        display: flex !important;
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 100vh;
-        height: 100dvh;
+        /* Adjust for scale: 20px / 0.7 = ~28px */
+        bottom: 28px;
+        left: 21px;
+        /* Button size adjusted for scale */
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 6px 30px rgba(102, 126, 234, 0.5);
+        transition: all 0.3s ease;
+        /* Counter the scale to keep button at real size */
+        transform: scale(1.43);
+        transform-origin: bottom left;
     }
 
-    .map-container {
-        position: fixed !important;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 1;
+    .mobile-nav-btn i {
+        font-size: 1.8rem;
+        color: white;
     }
 
-    #map {
-        width: 100%;
-        height: 100%;
+    .mobile-nav-btn:active {
+        transform: scale(1.35);
     }
 
-    /* ----------------------------------------
-       SIDEBAR: Slide-in panel (left)
-       ---------------------------------------- */
-    .sidebar {
-        position: fixed !important;
-        top: 0;
-        left: 0;
-        width: 280px;
-        max-width: 85%;
-        height: 100vh;
-        height: 100dvh;
-        z-index: 2000;
-        transform: translateX(-100%);
-        transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-        background: rgba(26, 29, 41, 0.98);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 5px 0 30px rgba(0, 0, 0, 0.4);
-        overflow-y: auto;
-        padding-top: 60px;
-    }
-
-    .sidebar.active {
-        transform: translateX(0);
-    }
-
-    .filter-section {
-        padding: 1rem;
-    }
-
-    .section-title {
-        font-size: 0.7rem;
-        margin-bottom: 0.75rem;
-    }
-
-    .filter-btn {
-        padding: 0.6rem 0.75rem;
-        font-size: 0.85rem;
-        margin-bottom: 0.5rem;
-        border-radius: 10px;
-    }
-
-    .filter-btn .icon {
-        font-size: 1rem;
-    }
-
-    .filter-btn .badge {
-        font-size: 0.7rem;
-        padding: 0.15rem 0.5rem;
-    }
-
-    .locations-section {
-        padding: 1rem;
-        max-height: calc(100vh - 300px);
-        overflow-y: auto;
-    }
-
-    .local-search-input {
-        font-size: 0.85rem;
-        padding: 0.6rem 2.5rem 0.6rem 2.5rem;
-    }
-
-    .location-card {
-        padding: 0.75rem;
-        margin-bottom: 0.5rem;
-        border-radius: 10px;
-    }
-
-    .location-name {
-        font-size: 0.85rem;
-    }
-
-    .location-badge {
-        font-size: 0.6rem;
-        padding: 0.15rem 0.45rem;
+    .mobile-nav-btn.active {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        box-shadow: 0 6px 30px rgba(231, 76, 60, 0.5);
     }
 
     /* ----------------------------------------
-       MOBILE BACKDROP
+       MOBILE BACKDROP (adjusted for scale)
        ---------------------------------------- */
     .mobile-backdrop {
         position: fixed;
         top: 0;
         left: 0;
-        right: 0;
-        bottom: 0;
+        width: 143%;
+        height: 143%;
         background: rgba(0, 0, 0, 0.5);
         z-index: 1999;
         opacity: 0;
@@ -229,188 +114,25 @@
     }
 
     /* ----------------------------------------
-       MAP CONTROLS: Floating right
+       SCALE CONTROL (adjusted position)
        ---------------------------------------- */
-    .map-controls {
-        position: fixed;
-        top: 70px;
-        right: 12px;
-        flex-direction: column;
-        gap: 8px;
-        z-index: 1100;
-    }
-
-    .map-control-btn,
-    .control-btn {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        font-size: 1rem;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    }
-
-    /* Hide some controls on mobile */
-    #drawToolsBtn,
-    #radiusBtn,
-    #clearRadiusBtn {
-        display: none;
-    }
-
-    .tooltip::after {
-        display: none;
+    .leaflet-control-scale,
+    .scale-control {
+        position: fixed !important;
+        bottom: 40px !important;
+        left: auto !important;
+        right: 20px !important;
+        z-index: 1000 !important;
+        /* Counter scale */
+        transform: scale(1.43);
+        transform-origin: bottom right;
     }
 
     /* ----------------------------------------
-       MOBILE NAV BUTTON (FAB)
-       ---------------------------------------- */
-    .mobile-nav-btn {
-        display: flex !important;
-        position: fixed;
-        bottom: 20px;
-        left: 15px;
-        width: 56px;
-        height: 56px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: 2px solid rgba(255, 255, 255, 0.2);
-        border-radius: 50%;
-        z-index: 2500;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
-        transition: all 0.3s ease;
-    }
-
-    .mobile-nav-btn i {
-        font-size: 1.4rem;
-        color: white;
-    }
-
-    .mobile-nav-btn:active {
-        transform: scale(0.95);
-    }
-
-    .mobile-nav-btn.active {
-        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        box-shadow: 0 4px 20px rgba(231, 76, 60, 0.4);
-    }
-
-    .mobile-nav-btn.active i::before {
-        content: "\f00d";
-        /* Change to X icon when active */
-    }
-
-    /* ----------------------------------------
-       LAYER SWITCHER: Bottom center
+       LAYER SWITCHER (larger for touch)
        ---------------------------------------- */
     .layer-switcher {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 0.5rem 0.75rem;
-        border-radius: 12px;
-        z-index: 1100;
-        width: auto;
-    }
-
-    .layer-title {
-        display: none;
-    }
-
-    .layer-options {
-        gap: 0.35rem;
-    }
-
-    .layer-btn {
-        padding: 0.4rem 0.75rem;
-        font-size: 0.75rem;
-        border-radius: 8px;
-    }
-
-    /* ----------------------------------------
-       INFO PANEL: Bottom sheet
-       ---------------------------------------- */
-    .info-panel {
-        position: fixed !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        top: auto !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        border-radius: 20px 20px 0 0;
-        max-height: 70vh;
-        overflow-y: auto;
-        padding: 1.25rem;
-        padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
-        z-index: 2000;
-        transform: translateY(100%);
-        transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-        display: block !important;
-        visibility: hidden;
-    }
-
-    .info-panel.active {
-        transform: translateY(0);
-        visibility: visible;
-    }
-
-    /* Info panel drag handle */
-    .info-panel::before {
-        content: '';
-        position: absolute;
-        top: 8px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 36px;
-        height: 4px;
-        background: rgba(255, 255, 255, 0.3);
-        border-radius: 2px;
-    }
-
-    .info-panel-header {
-        padding-top: 0.5rem;
-    }
-
-    .info-panel-title {
-        font-size: 1.1rem;
-    }
-
-    .properties-grid {
-        grid-template-columns: 1fr;
-        gap: 0.6rem;
-    }
-
-    .btn {
-        padding: 0.75rem 1rem;
-        font-size: 0.9rem;
-        border-radius: 10px;
-    }
-
-    /* ----------------------------------------
-       SEARCH RESULTS
-       ---------------------------------------- */
-    .search-results {
-        position: fixed;
-        top: 55px;
-        left: 0.5rem;
-        right: 0.5rem;
-        max-height: 50vh;
-        border-radius: 12px;
-        z-index: 2000;
-    }
-
-    .search-result-item {
-        padding: 0.85rem;
-    }
-
-    .search-result-item h4 {
-        font-size: 0.9rem;
-    }
-
-    .search-result-item p {
-        font-size: 0.75rem;
+        bottom: 30px;
     }
 
     /* ----------------------------------------
@@ -419,81 +141,64 @@
     .leaflet-control-zoom {
         display: none;
     }
+}
+
+/* ============================================
+   SMALLER PHONES (< 480px) - More zoom out
+   ============================================ */
+
+@media (max-width: 480px) {
+    #app {
+        transform: scale(0.55);
+        width: 182%;
+        /* 100 / 0.55 */
+        height: 182vh;
+    }
+
+    .mobile-nav-btn {
+        /* Adjust for smaller scale */
+        transform: scale(1.82);
+        bottom: 22px;
+        left: 16px;
+    }
+
+    .mobile-backdrop {
+        width: 182%;
+        height: 182%;
+    }
 
     .leaflet-control-scale,
-    .leaflet-bottom.leaflet-left .leaflet-control-scale,
     .scale-control {
-        position: fixed !important;
-        bottom: 25px !important;
-        left: auto !important;
-        right: 15px !important;
-        z-index: 1000 !important;
-    }
-
-    #map .leaflet-popup-content-wrapper {
-        max-width: 280px;
-    }
-
-    #map .leaflet-popup-content {
-        margin: 0.75rem;
-    }
-
-    .custom-popup h3 {
-        font-size: 1rem !important;
-    }
-
-    .custom-popup p {
-        font-size: 0.85rem !important;
-    }
-
-    .custom-popup .btn {
-        width: 100%;
-        padding: 0.65rem;
-    }
-
-    /* ----------------------------------------
-       LOADING OVERLAY
-       ---------------------------------------- */
-    .loading-overlay {
-        z-index: 3000;
+        transform: scale(1.82);
     }
 }
 
 /* ============================================
-   EXTRA SMALL DEVICES (< 380px)
+   VERY SMALL PHONES (< 380px)
    ============================================ */
 
 @media (max-width: 380px) {
-    .header {
-        padding: 0.5rem;
+    #app {
+        transform: scale(0.45);
+        width: 222%;
+        /* 100 / 0.45 */
+        height: 222vh;
     }
 
-    .logo {
-        width: 28px;
-        height: 28px;
+    .mobile-nav-btn {
+        transform: scale(2.22);
+        bottom: 18px;
+        left: 14px;
     }
 
-    .brand {
-        display: none;
+    .mobile-backdrop {
+        width: 222%;
+        height: 222%;
     }
 
-    .search-box {
-        font-size: 0.8rem;
-    }
-
-    .sidebar {
-        width: 260px;
-    }
-
-    .map-control-btn,
-    .control-btn {
-        width: 38px;
-        height: 38px;
-    }
-
-    .layer-btn {
-        padding: 0.35rem 0.6rem;
-        font-size: 0.7rem;
+    .leaflet-control-scale,
+    .scale-control {
+        transform: scale(2.22);
     }
 }
 
@@ -502,27 +207,16 @@
    ============================================ */
 
 @media (max-width: 768px) and (orientation: landscape) {
-    .sidebar {
-        width: 240px;
-        padding-top: 50px;
-    }
-
-    .info-panel {
-        max-height: 60vh;
-        left: 20% !important;
-        right: 20% !important;
-        border-radius: 16px 16px 0 0;
-    }
-
-    .map-controls {
-        top: 60px;
+    #app {
+        transform: scale(0.8);
+        width: 125%;
+        height: 125vh;
     }
 
     .mobile-nav-btn {
-        bottom: 15px;
-        left: 10px;
-        width: 48px;
-        height: 48px;
+        transform: scale(1.25);
+        bottom: 25px;
+        left: 18px;
     }
 }
 
