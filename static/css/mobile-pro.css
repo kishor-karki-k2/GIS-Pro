@@ -66,8 +66,17 @@
 
     .search-box {
         padding: 0.55rem 0.75rem 0.55rem 2.2rem;
-        font-size: 0.85rem;
+        font-size: 16px !important;
+        /* Prevents iOS auto-zoom on focus */
         border-radius: 10px;
+    }
+
+    /* Prevent zoom on all form inputs */
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+        touch-action: manipulation;
     }
 
     .search-icon {
