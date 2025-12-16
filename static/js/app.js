@@ -48,6 +48,7 @@ class GISApp {
 
     async init() {
         this.initMap();
+        this.initSearchSystem(); // Initialize new search system
         // Don't load locations initially - wait for user to search
         this.initEventListeners();
         this.setupMapMoveListener();
@@ -70,12 +71,7 @@ class GISApp {
             }
         });
 
-        // Show zoom prompt on initial load since we start at world view (zoom 2)
-        setTimeout(() => {
-            if (this.map.getZoom() < 6) {
-                this.showZoomPrompt();
-            }
-        }, 500);
+        // Initial zoom prompt removed per user request
     }
 
     initMap() {
@@ -222,13 +218,40 @@ class GISApp {
             const data = await response.json();
             this.locations = this.processOverpassData(data).slice(0, 500);
 
+            // Empty state handling with suggestions
+            if (this.locations.length === 0) {
+                const currentZoom = this.map.getZoom();
+                let suggestion = '';
+
+                if (currentZoom < 14) {
+                    suggestion = 'Zoom in to see more detailed locations.';
+                } else if (currentZoom > 17) {
+                    suggestion = 'Zoom out to find locations in a wider area.';
+                } else {
+                    suggestion = 'Try moving the map or changing filters.';
+                }
+
+                this.showNotification(`No results found. ${suggestion}`, 'info');
+            }
+
             this.renderLocations();
             this.updateCounts();
             this.updateTotalCount();
 
         } catch (error) {
             console.error('Error loading locations:', error);
-            this.showNotification('Unable to load locations. ' + error.message, 'error');
+
+            // Add actionable suggestion based on zoom level
+            const currentZoom = this.map.getZoom();
+            let suggestion = '';
+
+            if (currentZoom < 14) {
+                suggestion = 'Area too large. Please zoom in to reduce data load.';
+            } else {
+                suggestion = 'Please try zooming out slightly or moving the map.';
+            }
+
+            this.showNotification(`Unable to load locations. ${suggestion}`, 'error');
         } finally {
             this.loadingLocations = false;
             this.showLoadingOverlay(false);
@@ -677,38 +700,208 @@ class GISApp {
     }
 
     // ========================================
-    // Search
+    // Advanced Search System - Completely Rewritten
     // ========================================
 
-    async search(query) {
+    initSearchSystem() {
+        // Search state management
+        this.searchState = {
+            query: '',
+            results: [],
+            cache: new Map(), // LRU cache for search results
+            cacheMaxSize: 50,
+            abortController: null,
+            isSearching: false,
+            debounceTimer: null,
+            selectedIndex: -1
+        };
+
+        this.setupSearchListeners();
+    }
+
+    setupSearchListeners() {
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+
+        if (!searchInput) return;
+
+        // Input event with debouncing
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            this.handleSearchInput(query);
+        });
+
+        // Keyboard navigation
+        searchInput.addEventListener('keydown', (e) => {
+            this.handleSearchKeyboard(e);
+        });
+
+        // Clear on focus (optional)
+        searchInput.addEventListener('focus', () => {
+            if (this.searchState.results.length > 0 && this.searchState.query) {
+                this.showSearchResults();
+            }
+        });
+
+        // Click outside to close
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                this.hideSearchResults();
+            }
+        });
+    }
+
+    handleSearchInput(query) {
+        // Cancel previous debounce timer
+        if (this.searchState.debounceTimer) {
+            clearTimeout(this.searchState.debounceTimer);
+        }
+
+        // Update state
+        this.searchState.query = query;
+        this.searchState.selectedIndex = -1;
+
+        // Clear if query too short
         if (!query || query.length < 2) {
             this.hideSearchResults();
+            this.cancelSearch();
             return;
         }
 
+        // Show loading state immediately
+        this.showSearchLoading();
+
+        // Debounce search (300ms for responsive feel)
+        this.searchState.debounceTimer = setTimeout(() => {
+            this.performSearch(query);
+        }, 300);
+    }
+
+    async performSearch(query) {
+        // Check cache first
+        const cached = this.searchState.cache.get(query);
+        if (cached) {
+            this.displaySearchResults(cached);
+            return;
+        }
+
+        // Cancel previous request
+        this.cancelSearch();
+
+        // Create new abort controller
+        this.searchState.abortController = new AbortController();
+        this.searchState.isSearching = true;
+
         try {
-            // Use Nominatim directly
-            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`;
-            const response = await fetch(url, {
-                headers: { 'User-Agent': 'GIS-Pro-App-Demo/1.0' }
+            const url = `https://nominatim.openstreetmap.org/search?` + new URLSearchParams({
+                q: query,
+                format: 'json',
+                limit: '8',
+                addressdetails: '1',
+                extratags: '1'
             });
 
-            if (!response.ok) throw new Error('Geocoding failed');
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'GIS-Pro-App/2.0',
+                    'Accept-Language': 'en'
+                },
+                signal: this.searchState.abortController.signal
+            });
+
+            if (!response.ok) {
+                throw new Error(`Search failed: ${response.status}`);
+            }
 
             const results = await response.json();
 
-            const formattedResults = results.map(r => ({
-                name: r.display_name,
-                lat: parseFloat(r.lat),
-                lng: parseFloat(r.lon),
-                type: r.type,
-                address: r.address
-            }));
+            // Format results
+            const formattedResults = results.map(r => {
+                const lat = parseFloat(r.lat);
+                const lng = parseFloat(r.lon);
 
+                // Determine icon based on type
+                let icon = 'map-marker-alt';
+                if (r.type === 'city' || r.type === 'town' || r.type === 'village') {
+                    icon = 'city';
+                } else if (r.type === 'state' || r.type === 'country') {
+                    icon = 'globe-americas';
+                } else if (r.class === 'building') {
+                    icon = 'building';
+                } else if (r.class === 'highway' || r.class === 'railway') {
+                    icon = 'road';
+                } else if (r.class === 'amenity') {
+                    icon = 'store';
+                }
+
+                // Get short name for display
+                const displayName = r.display_name;
+                const shortName = r.name || displayName.split(',')[0];
+
+                return {
+                    name: displayName,
+                    shortName: shortName,
+                    lat: lat,
+                    lng: lng,
+                    type: r.type || 'place',
+                    class: r.class || 'unknown',
+                    icon: icon,
+                    importance: r.importance || 0,
+                    boundingbox: r.boundingbox
+                };
+            });
+
+            // Store in cache (with LRU eviction)
+            this.addToCache(query, formattedResults);
+
+            // Update state and display
+            this.searchState.results = formattedResults;
             this.displaySearchResults(formattedResults);
+
         } catch (error) {
-            console.error('Error searching:', error);
+            if (error.name === 'AbortError') {
+                // Request was cancelled, ignore
+                return;
+            }
+
+            console.error('Search error:', error);
+            this.displaySearchError(error.message);
+
+        } finally {
+            this.searchState.isSearching = false;
+            this.searchState.abortController = null;
         }
+    }
+
+    cancelSearch() {
+        if (this.searchState.abortController) {
+            this.searchState.abortController.abort();
+            this.searchState.abortController = null;
+        }
+        this.searchState.isSearching = false;
+    }
+
+    addToCache(query, results) {
+        // LRU cache implementation
+        if (this.searchState.cache.size >= this.searchState.cacheMaxSize) {
+            // Remove oldest entry
+            const firstKey = this.searchState.cache.keys().next().value;
+            this.searchState.cache.delete(firstKey);
+        }
+        this.searchState.cache.set(query, results);
+    }
+
+    showSearchLoading() {
+        const resultsContainer = document.getElementById('searchResults');
+        resultsContainer.innerHTML = `
+            <div class="search-result-item" style="text-align: center; opacity: 0.7;">
+                <div class="search-loading-spinner"></div>
+                <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
+                    Searching...
+                </p>
+            </div>
+        `;
+        resultsContainer.classList.add('active');
     }
 
     displaySearchResults(results) {
@@ -716,53 +909,183 @@ class GISApp {
 
         if (results.length === 0) {
             resultsContainer.innerHTML = `
-                <div class="search-result-item">
-                    <p style="color: var(--text-tertiary); text-align: center;">No places found</p>
+                <div class="search-result-item" style="text-align: center;">
+                    <i class="fas fa-search" style="font-size: 2rem; opacity: 0.3; color: var(--text-disabled);"></i>
+                    <p style="color: var(--text-tertiary); margin-top: 0.5rem;">No places found</p>
+                    <p style="color: var(--text-disabled); font-size: 0.75rem;">Try a different search term</p>
                 </div>
             `;
         } else {
             resultsContainer.innerHTML = results.map((result, idx) => `
-                <div class="search-result-item" onclick="app.navigateToPlace(${result.lat}, ${result.lng}, '${result.name.replace(/'/g, "\\'")}')">
-                    <h4>${result.name}</h4>
-                    <p style="font-size: 0.75rem; color: var(--text-disabled);">
-                        ${result.type} • Click to view
-                    </p>
+                <div class="search-result-item ${idx === this.searchState.selectedIndex ? 'selected' : ''}" 
+                     data-index="${idx}"
+                     data-lat="${result.lat}" 
+                     data-lng="${result.lng}" 
+                     data-name="${this.escapeHtml(result.name)}">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div class="search-result-icon">
+                            <i class="fas fa-${result.icon}"></i>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <h4 style="margin: 0; font-size: 0.9rem; font-weight: 600; color: var(--text-primary); 
+                                       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${result.shortName}
+                            </h4>
+                            <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: var(--text-secondary); 
+                                      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${result.name}
+                            </p>
+                            <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem; font-size: 0.7rem; color: var(--text-disabled);">
+                                <span><i class="fas fa-tag" style="margin-right: 0.25rem;"></i>${result.type}</span>
+                                <span><i class="fas fa-layer-group" style="margin-right: 0.25rem;"></i>${result.class}</span>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color: var(--text-disabled); font-size: 0.75rem;"></i>
+                    </div>
                 </div>
             `).join('');
+
+            // Add click listeners
+            this.attachSearchResultListeners();
         }
 
         resultsContainer.classList.add('active');
+    }
+
+    attachSearchResultListeners() {
+        const resultItems = document.querySelectorAll('.search-result-item[data-index]');
+
+        resultItems.forEach((item, idx) => {
+            item.addEventListener('click', () => {
+                const lat = parseFloat(item.dataset.lat);
+                const lng = parseFloat(item.dataset.lng);
+                const name = item.dataset.name;
+                this.navigateToPlace(lat, lng, name);
+            });
+
+            // Hover effect updates selected index
+            item.addEventListener('mouseenter', () => {
+                this.searchState.selectedIndex = idx;
+                this.updateSelectedResult();
+            });
+        });
+    }
+
+    displaySearchError(message) {
+        const resultsContainer = document.getElementById('searchResults');
+        resultsContainer.innerHTML = `
+            <div class="search-result-item" style="text-align: center;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ef4444; opacity: 0.7;"></i>
+                <p style="color: var(--text-primary); margin-top: 0.5rem; font-weight: 500;">Search Error</p>
+                <p style="color: var(--text-secondary); font-size: 0.75rem;">${this.escapeHtml(message)}</p>
+            </div>
+        `;
+        resultsContainer.classList.add('active');
+    }
+
+    handleSearchKeyboard(e) {
+        const results = this.searchState.results;
+        if (results.length === 0) return;
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                this.searchState.selectedIndex = Math.min(
+                    this.searchState.selectedIndex + 1,
+                    results.length - 1
+                );
+                this.updateSelectedResult();
+                break;
+
+            case 'ArrowUp':
+                e.preventDefault();
+                this.searchState.selectedIndex = Math.max(
+                    this.searchState.selectedIndex - 1,
+                    0
+                );
+                this.updateSelectedResult();
+                break;
+
+            case 'Enter':
+                e.preventDefault();
+                if (this.searchState.selectedIndex >= 0) {
+                    const result = results[this.searchState.selectedIndex];
+                    this.navigateToPlace(result.lat, result.lng, result.name);
+                }
+                break;
+
+            case 'Escape':
+                e.preventDefault();
+                this.hideSearchResults();
+                e.target.blur();
+                break;
+        }
+    }
+
+    updateSelectedResult() {
+        const resultItems = document.querySelectorAll('.search-result-item[data-index]');
+        resultItems.forEach((item, idx) => {
+            if (idx === this.searchState.selectedIndex) {
+                item.classList.add('selected');
+                // Scroll into view if needed
+                item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+                item.classList.remove('selected');
+            }
+        });
     }
 
     navigateToPlace(lat, lng, name) {
         // Hide search results
         this.hideSearchResults();
 
-        // Keep search text showing the navigated location
+        // Update search input
         document.getElementById('searchInput').value = name;
 
-        // Mark that user has searched - keep results stable
+        // Mark that user has searched
         this.userHasSearched = true;
         this.isProgrammaticMove = true;
 
-        // Pan to location with animation
-        this.map.flyTo([lat, lng], 13, {
+        // Determine appropriate zoom level based on location importance
+        let zoomLevel = 13;
+        const result = this.searchState.results.find(r => r.lat === lat && r.lng === lng);
+        if (result) {
+            if (result.type === 'country') zoomLevel = 6;
+            else if (result.type === 'state') zoomLevel = 8;
+            else if (result.type === 'city') zoomLevel = 12;
+            else if (result.type === 'town') zoomLevel = 14;
+            else if (result.type === 'village') zoomLevel = 15;
+        }
+
+        // Fly to location with smooth animation
+        this.map.flyTo([lat, lng], zoomLevel, {
             duration: 1.5,
-            easeLinearity: 0.5
+            easeLinearity: 0.25
         });
 
         // Show notification
-        this.showNotification(`Navigating to ${name}`, 'success');
+        this.showNotification(`📍 Navigating to ${name.split(',')[0]}`, 'success');
 
-        // Load locations for this area after navigation completes
+        // Load locations after navigation
         setTimeout(() => {
-            this.isProgrammaticMove = true; // Mark as programmatic before load
+            this.isProgrammaticMove = true;
             this.loadLocationsByBounds();
         }, 1600);
     }
 
+    showSearchResults() {
+        document.getElementById('searchResults').classList.add('active');
+    }
+
     hideSearchResults() {
         document.getElementById('searchResults').classList.remove('active');
+        this.searchState.selectedIndex = -1;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // ========================================
@@ -882,24 +1205,6 @@ class GISApp {
     // ========================================
 
     initEventListeners() {
-        // Search input
-        const searchInput = document.getElementById('searchInput');
-        let searchTimeout;
-
-        searchInput.addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                this.search(e.target.value);
-            }, 300);
-        });
-
-        // Click outside search to close results
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-container')) {
-                this.hideSearchResults();
-            }
-        });
-
         // Global event delegation for View Details button in popups
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('view-details-btn') ||
