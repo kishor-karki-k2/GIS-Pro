@@ -146,8 +146,8 @@
 .leaflet-draw-edit-edit a,
 .leaflet-draw-edit-remove a {
     background-image: none !important;
-    background-color: var(--glass-bg-light) !important;
-    border: 1px solid var(--glass-border) !important;
+    background-color: rgba(30, 32, 41, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
     transition: all var(--transition-fast) !important;
     position: relative !important;
     opacity: 1 !important;
