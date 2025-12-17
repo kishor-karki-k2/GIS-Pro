@@ -191,17 +191,75 @@
         border-radius: 6px;
     }
 
-    /* Leaflet Zoom Controls */
+    /* Leaflet Zoom Controls - Ensure Visibility */
     .leaflet-control-zoom {
+        display: flex !important;
+        flex-direction: column !important;
         margin-right: 0 !important;
         margin-left: 12px !important;
+        margin-bottom: 10px !important;
+        border: none !important;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+        z-index: 1000 !important;
     }
 
     .leaflet-control-zoom a {
+        width: 44px !important;
+        height: 44px !important;
+        line-height: 44px !important;
+        font-size: 1.4rem !important;
+        background: rgba(30, 32, 41, 0.95) !important;
+        color: #e0e0e0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-radius: 10px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .leaflet-control-zoom a:hover {
+        background: rgba(102, 126, 234, 0.3) !important;
+        color: #fff !important;
+    }
+
+    /* Leaflet Draw Toolbar - Move to RIGHT side on mobile to avoid overlap */
+    .leaflet-draw.leaflet-control {
+        position: fixed !important;
+        top: 120px !important;
+        right: 12px !important;
+        left: auto !important;
+    }
+
+    .leaflet-draw-toolbar {
+        background: rgba(30, 32, 41, 0.95) !important;
+        padding: 4px !important;
+        border-radius: 10px !important;
+    }
+
+    .leaflet-draw-toolbar a {
         width: 40px !important;
         height: 40px !important;
         line-height: 40px !important;
-        font-size: 1.2rem !important;
+        margin: 2px !important;
+        border-radius: 8px !important;
+    }
+
+    /* Draw Actions - Position on LEFT side of buttons */
+    .leaflet-draw-actions {
+        position: absolute !important;
+        right: 100% !important;
+        left: auto !important;
+        top: 0 !important;
+        margin-right: 8px !important;
+        background: rgba(30, 32, 41, 0.95) !important;
+        border-radius: 8px !important;
+        padding: 4px !important;
+        white-space: nowrap !important;
+    }
+
+    .leaflet-draw-actions a {
+        padding: 6px 10px !important;
+        font-size: 0.75rem !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-radius: 6px !important;
     }
 
     /* Scale Control */

@@ -170,12 +170,9 @@ class GISApp {
         const MIN_ZOOM_FOR_DATA = 6;
 
         if (currentZoom < MIN_ZOOM_FOR_DATA) {
-            this.showZoomPrompt();
+            // Silently skip loading when area too large - no popup
             return;
         }
-
-        // Hide zoom prompt if visible
-        this.hideZoomPrompt();
 
         try {
             this.loadingLocations = true;
@@ -1485,7 +1482,24 @@ class GISApp {
         // Create notification element
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
-        notification.style.cssText = `
+
+        // Subtle type = text only, no background
+        const isSubtle = type === 'subtle';
+
+        notification.style.cssText = isSubtle ? `
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            z-index: 10000;
+            animation: slideIn 0.3s ease-out;
+        ` : `
             position: fixed;
             top: 100px;
             right: 20px;
@@ -1500,8 +1514,9 @@ class GISApp {
             animation: slideIn 0.3s ease-out;
         `;
 
-        const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
-        notification.innerHTML = `
+        const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'subtle' ? '' : 'info-circle';
+
+        notification.innerHTML = isSubtle ? `<span>${message}</span>` : `
             <div style="display: flex; align-items: center; gap: 0.75rem;">
                 <i class="fas fa-${icon}"></i>
                 <span>${message}</span>
@@ -1709,12 +1724,12 @@ class GISApp {
                 }
             }, 100);
 
-            this.showNotification('Draw tools activated! Drag toolbar to reposition.', 'success');
+            this.showNotification('Draw tools activated', 'subtle');
         } else {
             this.map.removeControl(this.drawTools);
             this.drawToolsActive = false;
             btn.classList.remove('active');
-            this.showNotification('Draw tools deactivated', 'info');
+            this.showNotification('Draw tools deactivated', 'subtle');
         }
     }
 
