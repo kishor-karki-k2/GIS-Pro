@@ -1,229 +1,398 @@
-/* ==========================================================================
-   GIS Pro - Mobile View with Scaled Layout
-   Shows zoomed-out desktop view, page is fixed, only map can zoom
-   ========================================================================== */
-
 /* ============================================
-   MOBILE BREAKPOINT: 768px and below
+   GIS Pro - Mobile Optimized Styles
+   Breakpoint: 768px and below
    ============================================ */
 
 @media (max-width: 768px) {
 
-    /* ----------------------------------------
-       SCALED LAYOUT: Zoomed out desktop view
-       ---------------------------------------- */
-    body {
-        overflow: hidden;
-        width: 100vw;
-        height: 100vh;
+    /* ===========================================
+     HEADER - Compact Mobile Layout
+     =========================================== */
+    .header {
+        padding: 0.75rem 1rem;
+        flex-wrap: nowrap;
+        gap: 0.5rem;
     }
 
-    #app {
-        transform: scale(0.7);
-        transform-origin: top left;
-        width: 143%;
-        /* 100 / 0.7 */
-        height: 143vh;
-        overflow: hidden;
+    .logo-section {
+        gap: 0.5rem;
+        flex-shrink: 0;
     }
 
-    /* ----------------------------------------
-       PREVENT ZOOM ON INPUTS
-       ---------------------------------------- */
-    input,
-    select,
-    textarea {
-        font-size: 16px !important;
-        touch-action: manipulation;
+    .logo {
+        width: 36px;
+        height: 36px;
+        font-size: 1.2rem;
+    }
+
+    /* Hide brand text on mobile */
+    .brand {
+        display: none;
+    }
+
+    /* Search - Expandable Style */
+    .search-container {
+        flex: 1;
+        max-width: none;
+        margin: 0 0.5rem;
     }
 
     .search-box {
-        font-size: 16px !important;
+        padding: 0.6rem 0.8rem 0.6rem 2.2rem;
+        font-size: 0.9rem;
+        border-radius: 10px;
     }
 
-    /* ----------------------------------------
-       HIDE ELEMENTS NOT NEEDED IN SCALED VIEW
-       ---------------------------------------- */
+    .search-icon {
+        left: 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    .search-results {
+        max-height: 60vh;
+        border-radius: 10px;
+        top: calc(100% + 8px);
+    }
+
+    .search-result-item {
+        padding: 0.75rem;
+    }
+
+    .search-result-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 0.8rem;
+    }
+
+    /* Hide non-essential header elements */
     .guidance-box {
         display: none !important;
     }
 
-    .tooltip::after {
-        display: none !important;
+    .location-counter {
+        display: none;
     }
 
-    /* ----------------------------------------
-       MOBILE NAV BUTTON (stays at real size)
-       ---------------------------------------- */
+    .header-actions {
+        gap: 0.5rem;
+    }
+
+    .menu-btn {
+        padding: 0.5rem;
+        border-radius: 8px;
+    }
+
+    /* ===========================================
+     SIDEBAR - Bottom Sheet Style
+     =========================================== */
+    .sidebar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: auto;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-height: 70vh;
+        transform: translateY(100%);
+        border-radius: 20px 20px 0 0;
+        border-right: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        z-index: 2000;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar.active {
+        transform: translateY(0);
+    }
+
+    /* Sidebar Handle Bar */
+    .sidebar::before {
+        content: '';
+        display: block;
+        width: 40px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
+        margin: 12px auto;
+    }
+
+    .filter-section {
+        padding: 0.75rem 1rem;
+    }
+
+    .section-title {
+        font-size: 0.7rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .filter-btn {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+        border-radius: 10px;
+    }
+
+    .locations-section {
+        padding: 0.75rem 1rem;
+        max-height: 40vh;
+        overflow-y: auto;
+    }
+
+    .location-card {
+        padding: 0.75rem;
+        border-radius: 10px;
+    }
+
+    /* ===========================================
+     MAP CONTAINER & CONTROLS
+     =========================================== */
+    .container {
+        height: calc(100vh - 56px);
+    }
+
+    .map-container {
+        width: 100%;
+    }
+
+    /* Touch-friendly Map Controls - Left side for thumb access */
+    .map-controls {
+        left: 12px;
+        right: auto;
+        top: 12px;
+        gap: 8px;
+    }
+
+    .map-control-btn,
+    .control-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 1.1rem;
+        border-radius: 12px;
+    }
+
+    /* Layer Switcher - Compact */
+    .layer-switcher {
+        bottom: 16px;
+        padding: 0.6rem;
+        border-radius: 10px;
+    }
+
+    .layer-title {
+        display: none;
+    }
+
+    .layer-options {
+        gap: 0.4rem;
+    }
+
+    .layer-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+        border-radius: 6px;
+    }
+
+    /* Leaflet Zoom Controls */
+    .leaflet-control-zoom {
+        margin-right: 0 !important;
+        margin-left: 12px !important;
+    }
+
+    .leaflet-control-zoom a {
+        width: 40px !important;
+        height: 40px !important;
+        line-height: 40px !important;
+        font-size: 1.2rem !important;
+    }
+
+    /* Scale Control */
+    .leaflet-control-scale {
+        margin-left: 12px !important;
+    }
+
+    /* ===========================================
+     INFO PANEL - Full Width Bottom Card
+     =========================================== */
+    .info-panel {
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: 0.75rem;
+        max-width: none;
+        padding: 1rem;
+        border-radius: 14px;
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+
+    .info-panel-header {
+        margin-bottom: 0.75rem;
+    }
+
+    .info-panel-title {
+        font-size: 1.1rem;
+    }
+
+    .close-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+    }
+
+    .info-panel-content {
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+    }
+
+    .properties-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .property-item {
+        padding: 0.75rem;
+    }
+
+    .btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    /* ===========================================
+     MOBILE NAVIGATION FAB
+     =========================================== */
     .mobile-nav-btn {
         display: flex !important;
         position: fixed;
-        /* Adjust for scale: 20px / 0.7 = ~28px */
-        bottom: 28px;
-        left: 21px;
-        /* Button size adjusted for scale */
-        width: 80px;
-        height: 80px;
+        bottom: 20px;
+        left: 20px;
+        width: 56px;
+        height: 56px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: 3px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        z-index: 10000;
+        border: none;
+        border-radius: 16px;
+        color: white;
+        font-size: 1.3rem;
         align-items: center;
         justify-content: center;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+        z-index: 1500;
         cursor: pointer;
-        box-shadow: 0 6px 30px rgba(102, 126, 234, 0.5);
         transition: all 0.3s ease;
-        /* Counter the scale to keep button at real size */
-        transform: scale(1.43);
-        transform-origin: bottom left;
     }
 
-    .mobile-nav-btn i {
-        font-size: 1.8rem;
-        color: white;
-    }
-
+    .mobile-nav-btn:hover,
     .mobile-nav-btn:active {
-        transform: scale(1.35);
+        transform: scale(1.05);
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.6);
     }
 
     .mobile-nav-btn.active {
-        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        box-shadow: 0 6px 30px rgba(231, 76, 60, 0.5);
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
     }
 
-    /* ----------------------------------------
-       MOBILE BACKDROP (adjusted for scale)
-       ---------------------------------------- */
+    /* ===========================================
+     MOBILE BACKDROP
+     =========================================== */
     .mobile-backdrop {
+        display: none;
         position: fixed;
         top: 0;
         left: 0;
-        width: 143%;
-        height: 143%;
-        background: rgba(0, 0, 0, 0.5);
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
         z-index: 1999;
         opacity: 0;
-        pointer-events: none;
         transition: opacity 0.3s ease;
     }
 
     .mobile-backdrop.active {
+        display: block;
         opacity: 1;
-        pointer-events: auto;
     }
 
-    /* ----------------------------------------
-       SCALE CONTROL (adjusted position)
-       ---------------------------------------- */
-    .leaflet-control-scale,
-    .scale-control {
-        position: fixed !important;
-        bottom: 40px !important;
-        left: auto !important;
-        right: 20px !important;
-        z-index: 1000 !important;
-        /* Counter scale */
-        transform: scale(1.43);
-        transform-origin: bottom right;
+    /* ===========================================
+     POPUPS & MODALS
+     =========================================== */
+    #map .leaflet-popup-content-wrapper {
+        max-width: calc(100vw - 40px);
     }
 
-    /* ----------------------------------------
-       LAYER SWITCHER (larger for touch)
-       ---------------------------------------- */
-    .layer-switcher {
-        bottom: 30px;
+    #map .leaflet-popup-content {
+        margin: 0.75rem;
+        max-width: 280px;
     }
 
-    /* ----------------------------------------
-       LEAFLET OVERRIDES
-       ---------------------------------------- */
-    .leaflet-control-zoom {
+    .custom-popup h3 {
+        font-size: 1rem;
+    }
+
+    .custom-popup p {
+        font-size: 0.85rem;
+    }
+
+    /* Radius Modal */
+    .radius-modal-content {
+        width: 95%;
+        max-width: 350px;
+        padding: 1.25rem;
+    }
+
+    /* ===========================================
+     NOTIFICATIONS
+     =========================================== */
+    .notification {
+        left: 1rem !important;
+        right: 1rem !important;
+        bottom: 80px !important;
+        max-width: none !important;
+    }
+
+    /* ===========================================
+     UTILITY ADJUSTMENTS
+     =========================================== */
+    .tooltip::after {
         display: none;
     }
 }
 
-/* ============================================
-   SMALLER PHONES (< 480px) - More zoom out
-   ============================================ */
+/* ===========================================
+   EXTRA SMALL DEVICES (< 375px)
+   =========================================== */
+@media (max-width: 374px) {
+    .header {
+        padding: 0.5rem 0.75rem;
+    }
 
-@media (max-width: 480px) {
-    #app {
-        transform: scale(0.55);
-        width: 182%;
-        /* 100 / 0.55 */
-        height: 182vh;
+    .logo {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+
+    .search-box {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.6rem 0.5rem 2rem;
     }
 
     .mobile-nav-btn {
-        /* Adjust for smaller scale */
-        transform: scale(1.82);
-        bottom: 22px;
+        width: 48px;
+        height: 48px;
+        font-size: 1.1rem;
+        bottom: 16px;
         left: 16px;
     }
 
-    .mobile-backdrop {
-        width: 182%;
-        height: 182%;
-    }
-
-    .leaflet-control-scale,
-    .scale-control {
-        transform: scale(1.82);
+    .map-control-btn,
+    .control-btn {
+        width: 44px;
+        height: 44px;
     }
 }
 
-/* ============================================
-   VERY SMALL PHONES (< 380px)
-   ============================================ */
-
-@media (max-width: 380px) {
-    #app {
-        transform: scale(0.45);
-        width: 222%;
-        /* 100 / 0.45 */
-        height: 222vh;
-    }
-
+/* Hide mobile nav button on desktop */
+@media (min-width: 769px) {
     .mobile-nav-btn {
-        transform: scale(2.22);
-        bottom: 18px;
-        left: 14px;
+        display: none !important;
     }
-
-    .mobile-backdrop {
-        width: 222%;
-        height: 222%;
-    }
-
-    .leaflet-control-scale,
-    .scale-control {
-        transform: scale(2.22);
-    }
-}
-
-/* ============================================
-   LANDSCAPE MODE
-   ============================================ */
-
-@media (max-width: 768px) and (orientation: landscape) {
-    #app {
-        transform: scale(0.8);
-        width: 125%;
-        height: 125vh;
-    }
-
-    .mobile-nav-btn {
-        transform: scale(1.25);
-        bottom: 25px;
-        left: 18px;
-    }
-}
-
-/* ============================================
-   DESKTOP: Hide mobile-only elements
-   ============================================ */
-
-.mobile-nav-btn {
-    display: none;
 }
